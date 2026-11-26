@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from personal_ops.deadlines import extract_deadlines, to_ics
-from personal_ops.naming import build_filename, company_from_mail, slug
+from paperpilot_ops.deadlines import extract_deadlines, to_ics
+from paperpilot_ops.naming import build_filename, company_from_mail, slug
 
 
 def test_slug_removes_umlauts_stopwords_and_gender():
@@ -19,7 +19,9 @@ def test_company_from_domain_and_freemail(make_mail, rules):
         company_from_mail(make_mail(sender="HR <jobs@karriere.nordlicht-software.example>"), rules.generic_domains)
         == "Nordlicht-Software"
     )
-    assert company_from_mail(make_mail(sender="Sam Beispiel <sam@example.com>"), rules.generic_domains) == "Sam-Beispiel"
+    assert (
+        company_from_mail(make_mail(sender="Sam Beispiel <sam@example.com>"), rules.generic_domains) == "Sam-Beispiel"
+    )
 
 
 def test_deadline_with_time_and_without_year(make_mail):

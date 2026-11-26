@@ -1,4 +1,4 @@
-from personal_ops.cli import main
+from paperpilot_ops.cli import main
 
 
 def test_eval_meets_baseline(capsys):

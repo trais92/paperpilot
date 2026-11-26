@@ -15,7 +15,7 @@ from pathlib import Path
 from .deadlines import to_ics
 from .models import Deadline
 
-META_DIR = ".apo"
+META_DIR = ".paperpilot"
 
 
 def sha256(data: bytes) -> str:

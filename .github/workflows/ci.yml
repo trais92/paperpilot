@@ -20,6 +20,6 @@ jobs:
       - run: ruff check .
       - run: pytest -q
       - name: Demo-Lauf
-        run: apo demo
+        run: paperpilot demo
       - name: Evaluation (Mindestgenauigkeit 85 %)
-        run: apo eval --min-accuracy 0.85
+        run: paperpilot eval --min-accuracy 0.85

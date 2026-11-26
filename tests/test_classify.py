@@ -1,4 +1,4 @@
-from personal_ops.classify import UNCLEAR, LLMClassifier, RuleClassifier
+from paperpilot_ops.classify import UNCLEAR, LLMClassifier, RuleClassifier
 
 
 def test_invitation_beats_confirmation(rules, make_mail):

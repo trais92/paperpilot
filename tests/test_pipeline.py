@@ -1,8 +1,8 @@
 import csv
 
-from personal_ops.classify import RuleClassifier
-from personal_ops.pipeline import run
-from personal_ops.store import LocalStore
+from paperpilot_ops.classify import RuleClassifier
+from paperpilot_ops.pipeline import run
+from paperpilot_ops.store import LocalStore
 
 
 def _mails(make_mail):

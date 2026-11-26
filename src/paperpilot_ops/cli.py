@@ -1,4 +1,4 @@
-"""Kommandozeile: apo demo | run | eval | init"""
+"""Kommandozeile: paperpilot demo | run | eval | init"""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from .store import LocalStore
 
 
 def _data(name: str) -> Path:
-    return Path(str(resources.files("personal_ops").joinpath("data", name)))
+    return Path(str(resources.files("paperpilot_ops").joinpath("data", name)))
 
 
 def cmd_demo(args: argparse.Namespace) -> int:
@@ -33,8 +33,8 @@ def cmd_demo(args: argparse.Namespace) -> int:
     mails = list(JsonSource(_data("demo_inbox.json")).fetch(store.last_run()))
     result = run(mails, make_classifier("rules", rules), rules, store, apply=True)
     print(render_report(result, out))
-    print("\nTipp: 'apo demo' nochmal ausführen zeigt die Idempotenz (0 neue Mails).")
-    print("      'apo eval' misst die Trefferquote auf dem Testset.")
+    print("\nTipp: 'paperpilot demo' nochmal ausführen zeigt die Idempotenz (0 neue Mails).")
+    print("      'paperpilot eval' misst die Trefferquote auf dem Testset.")
     return 0
 
 
@@ -43,9 +43,11 @@ def cmd_run(args: argparse.Namespace) -> int:
     store = LocalStore(args.target or rules.target_dir)
     since = datetime.fromisoformat(args.since) if args.since else store.last_run()
     if args.source == "imap":
-        host = os.environ.get("APO_IMAP_HOST", "imap.gmail.com")
-        user = os.environ.get("APO_IMAP_USER") or input("IMAP-Benutzer: ")
-        password = os.environ.get("APO_IMAP_PASSWORD") or getpass.getpass("App-Passwort (wird nicht gespeichert): ")
+        host = os.environ.get("PAPERPILOT_IMAP_HOST", "imap.gmail.com")
+        user = os.environ.get("PAPERPILOT_IMAP_USER") or input("IMAP-Benutzer: ")
+        password = os.environ.get("PAPERPILOT_IMAP_PASSWORD") or getpass.getpass(
+            "App-Passwort (wird nicht gespeichert): "
+        )
         source = ImapSource(host, user, password)
     else:
         source = JsonSource(args.input or _data("demo_inbox.json"))
@@ -77,7 +79,7 @@ def cmd_init(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="apo", description="Agentic Personal Ops: Mails regelbasiert einsortieren.")
+    p = argparse.ArgumentParser(prog="paperpilot", description="PaperPilot: Mails regelbasiert einsortieren.")
     p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = p.add_subparsers(dest="cmd", required=True)
 

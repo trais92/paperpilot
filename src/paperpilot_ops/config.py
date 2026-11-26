@@ -56,7 +56,7 @@ class Rules:
 
 
 def default_rules_text() -> str:
-    return resources.files("personal_ops").joinpath("default_rules.toml").read_text("utf-8")
+    return resources.files("paperpilot_ops").joinpath("default_rules.toml").read_text("utf-8")
 
 
 def load_rules(path: str | Path | None = None) -> Rules:

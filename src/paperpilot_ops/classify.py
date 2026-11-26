@@ -72,11 +72,11 @@ class RuleClassifier:
 class LLMClassifier:
     """Optionaler Klassifizierer ueber die Claude API (strukturierte JSON-Ausgabe).
 
-    Braucht `pip install agentic-personal-ops[llm]` und Zugangsdaten
+    Braucht `pip install paperpilot-ops[llm]` und Zugangsdaten
     (z. B. ANTHROPIC_API_KEY). Bei Fehlern oder Ablehnung: 'unklar' -> menschliche Pruefung.
     """
 
-    MODEL = os.environ.get("APO_MODEL", "claude-opus-5-5")
+    MODEL = os.environ.get("PAPERPILOT_MODEL", "claude-opus-5-5")
 
     def __init__(self, rules: Rules, client=None):
         self.rules = rules

@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "agentic-personal-ops"
+name = "paperpilot-ops"
 version = "0.1.0"
 description = "Mail-Triage und Dokumentenablage nach Regeln, mit Fristen-Erkennung, Duplikat-Check, Evaluation und Human-in-the-loop."
 readme = "README.md"
@@ -16,13 +16,13 @@ llm = ["anthropic>=2.0"]
 dev = ["pytest>=8", "ruff>=0.6"]
 
 [project.scripts]
-apo = "personal_ops.cli:main"
+paperpilot = "paperpilot_ops.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-personal_ops = ["default_rules.toml", "data/*.json", "data/*.jsonl"]
+paperpilot_ops = ["default_rules.toml", "data/*.json", "data/*.jsonl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

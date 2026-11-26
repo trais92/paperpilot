@@ -53,9 +53,9 @@ def _esc(s: str) -> str:
 
 def to_ics(deadlines: list[Deadline], now: datetime | None = None) -> str:
     stamp = (now or datetime.now()).strftime("%Y%m%dT%H%M%S")
-    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//agentic-personal-ops//DE", "CALSCALE:GREGORIAN"]
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//paperpilot-ops//DE", "CALSCALE:GREGORIAN"]
     for d in deadlines:
-        uid = f"{d.mail_id}-{d.date:%Y%m%d%H%M}@agentic-personal-ops"
+        uid = f"{d.mail_id}-{d.date:%Y%m%d%H%M}@paperpilot-ops"
         lines += ["BEGIN:VEVENT", f"UID:{uid}", f"DTSTAMP:{stamp}"]
         if d.has_time:
             end = d.date + timedelta(hours=1)

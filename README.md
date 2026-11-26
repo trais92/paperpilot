@@ -1,10 +1,10 @@
-# agentic-personal-ops
+# PaperPilot
 
 **Mail-Triage und Dokumentenablage nach Regeln, mit Fristen-Erkennung, Duplikat-Check, messbarer Trefferquote und menschlicher Freigabe.**
 
 *English summary: a small, dependency-free Python CLI that classifies incoming mail by configurable rules (or optionally an LLM), files documents using a strict naming convention, extracts deadlines into an `.ics` calendar file, keeps an application tracker, and measures classifier accuracy on a labelled test set. Runs instantly in demo mode on anonymous sample data.*
 
-[![CI](https://github.com/trais92/agentic-personal-ops/actions/workflows/ci.yml/badge.svg)](https://github.com/trais92/agentic-personal-ops/actions/workflows/ci.yml)
+[![CI](https://github.com/trais92/paperpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/trais92/paperpilot/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
 
@@ -15,10 +15,10 @@ Dieses Repo ist die Code-Fassung eines Systems, das ich zuerst mit einem KI-Koor
 ## In 60 Sekunden ausprobieren
 
 ```bash
-git clone https://github.com/trais92/agentic-personal-ops.git
-cd agentic-personal-ops
-pip install .
-apo demo
+git clone https://github.com/trais92/paperpilot.git
+cd paperpilot
+pip install .        # Paketname: paperpilot-ops, Befehl: paperpilot
+paperpilot demo
 ```
 
 Keine Zugangsdaten nötig. Die Demo sortiert 15 anonyme Beispielmails in einen Ordner `demo-ablage/`:
@@ -57,7 +57,7 @@ Danach liegen im Ordner:
 | Fristenliste und **Kalenderdatei** zum Import in Google/Outlook/Apple | `demo-ablage/Fristen/fristen.csv`, `fristen.ics` |
 | Unklare Mails für die menschliche Prüfung | `demo-ablage/00 Eingang/` |
 
-Ein zweites `apo demo` meldet `0 Mails`: Die Läufe sind idempotent.
+Ein zweites `paperpilot demo` meldet `0 Mails`: Die Läufe sind idempotent.
 
 ---
 
@@ -90,7 +90,7 @@ flowchart LR
     J --> F
     I --> F
     M[(Regeldatei<br/>rules.toml)] -.-> R
-    S[(.apo/state.json<br/>.apo/index.json)] -.-> F
+    S[(.paperpilot/state.json<br/>.paperpilot/index.json)] -.-> F
     S -.-> D
 ```
 
@@ -111,7 +111,7 @@ flowchart LR
 - **Least Privilege:** Das Postfach wird nur gelesen, Mails werden nicht als gelesen markiert, nichts wird gelöscht oder überschrieben.
 - **Konfiguration statt Code:** Neue Kategorie oder neues Stichwort heißt `rules.toml` ändern, nicht Python.
 - **Idempotenz:** Jeder Lauf verarbeitet nur Mails seit dem letzten Lauf, und ein Inhalts-Hash verhindert doppelte Ablagen.
-- **Messbarkeit:** Jede Regeländerung lässt sich mit `apo eval` gegen ein Testset prüfen. Die CI bricht ab, wenn die Genauigkeit unter 85 % fällt.
+- **Messbarkeit:** Jede Regeländerung lässt sich mit `paperpilot eval` gegen ein Testset prüfen. Die CI bricht ab, wenn die Genauigkeit unter 85 % fällt.
 - **Keine Abhängigkeiten:** Der Kern nutzt nur die Python-Standardbibliothek. Das LLM ist ein optionales Extra.
 
 ---
@@ -119,7 +119,7 @@ flowchart LR
 ## Evaluation
 
 ```bash
-apo eval
+paperpilot eval
 ```
 
 Ergebnis des regelbasierten Klassifizierers auf dem mitgelieferten Testset (52 anonyme, gelabelte Mails, 13 Klassen):
@@ -140,12 +140,12 @@ Fehleranalyse aus dem Lauf: Die Regeln verpassen vor allem Formulierungen ohne t
 ## Mit echtem Postfach nutzen
 
 ```bash
-apo init                                   # legt rules.toml zum Anpassen an
-apo run --source imap --rules rules.toml --target "G:/Meine Ablage/Persönlich"   # Trockenlauf
-apo run --source imap --rules rules.toml --target "G:/Meine Ablage/Persönlich" --apply
+paperpilot init                                   # legt rules.toml zum Anpassen an
+paperpilot run --source imap --rules rules.toml --target "G:/Meine Ablage/Persönlich"   # Trockenlauf
+paperpilot run --source imap --rules rules.toml --target "G:/Meine Ablage/Persönlich" --apply
 ```
 
-- Für Gmail: IMAP aktivieren und ein **App-Passwort** anlegen. Benutzer und Passwort kommen aus `APO_IMAP_USER` / `APO_IMAP_PASSWORD` oder werden abgefragt und **nie gespeichert**.
+- Für Gmail: IMAP aktivieren und ein **App-Passwort** anlegen. Benutzer und Passwort kommen aus `PAPERPILOT_IMAP_USER` / `PAPERPILOT_IMAP_PASSWORD` oder werden abgefragt und **nie gespeichert**.
 - Als `--target` eignet sich ein per Google Drive for Desktop synchronisierter Ordner. Dann landet die Ablage automatisch im Drive.
 - `fristen.ics` lässt sich in jeden Kalender importieren.
 
@@ -154,23 +154,23 @@ apo run --source imap --rules rules.toml --target "G:/Meine Ablage/Persönlich" 
 ```bash
 pip install ".[llm]"
 export ANTHROPIC_API_KEY=...
-apo eval --classifier llm      # Trefferquote im Vergleich zu den Regeln messen
+paperpilot eval --classifier llm      # Trefferquote im Vergleich zu den Regeln messen
 ```
 
-Der LLM-Klassifizierer nutzt strukturierte Ausgabe (JSON-Schema mit festen Labels). Bei Fehlern, Ablehnung oder ungültiger Antwort fällt er auf `unklar` zurück, also auf menschliche Prüfung. Das Modell lässt sich per `APO_MODEL` setzen.
+Der LLM-Klassifizierer nutzt strukturierte Ausgabe (JSON-Schema mit festen Labels). Bei Fehlern, Ablehnung oder ungültiger Antwort fällt er auf `unklar` zurück, also auf menschliche Prüfung. Das Modell lässt sich per `PAPERPILOT_MODEL` setzen.
 
 ### Zeitgesteuert ausführen
 
 Linux/macOS (`crontab -e`), täglich um 9 und 21 Uhr:
 
 ```cron
-0 9,21 * * * cd ~/agentic-personal-ops && apo run --source imap --rules rules.toml --apply >> apo.log 2>&1
+0 9,21 * * * cd ~/paperpilot && paperpilot run --source imap --rules rules.toml --apply >> paperpilot.log 2>&1
 ```
 
 Windows (Aufgabenplanung):
 
 ```powershell
-schtasks /create /tn "apo-mail" /sc daily /st 09:00 /tr "apo run --source imap --rules C:\apo\rules.toml --apply"
+schtasks /create /tn "paperpilot-mail" /sc daily /st 09:00 /tr "paperpilot run --source imap --rules C:\paperpilot\rules.toml --apply"
 ```
 
 ---

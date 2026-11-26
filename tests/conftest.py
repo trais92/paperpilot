@@ -2,8 +2,8 @@ from datetime import datetime
 
 import pytest
 
-from personal_ops.config import load_rules
-from personal_ops.models import Attachment, Mail
+from paperpilot_ops.config import load_rules
+from paperpilot_ops.models import Attachment, Mail
 
 
 @pytest.fixture

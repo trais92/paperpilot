@@ -11,3 +11,4 @@ rules.toml
 *.log
 .env
 .coverage
+.mypy_cache/

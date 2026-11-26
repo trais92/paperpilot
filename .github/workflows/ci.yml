@@ -17,8 +17,14 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[dev]"
-      - run: ruff check .
-      - run: pytest -q
+      - name: Lint und Format
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Typprüfung (mypy --strict)
+        run: mypy
+      - name: Tests mit Abdeckung (mindestens 85 %)
+        run: pytest -q --cov=paperpilot_ops --cov-fail-under=85
       - name: Demo-Lauf
         run: paperpilot demo
       - name: Evaluation (Mindestgenauigkeit 85 %)

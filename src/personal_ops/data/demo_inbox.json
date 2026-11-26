@@ -1,0 +1,143 @@
+[
+ {
+  "id": "d01",
+  "date": "2026-11-16T09:12",
+  "from": "Talent Team <jobs@nordlicht-software.example>",
+  "subject": "Ihre Bewerbung als Junior Projektmanager (m/w/d)",
+  "body": "Hallo,\n\nvielen Dank für Ihre Bewerbung als Junior Projektmanager. Ihre Unterlagen sind bei uns eingegangen. Wir melden uns innerhalb von zwei Wochen.\n\nViele Grüße\nIhr Recruiting-Team"
+ },
+ {
+  "id": "d02",
+  "date": "2026-11-18T14:30",
+  "from": "Personal <karriere@kranich-logistik.example>",
+  "subject": "Einladung zum Interview – Projektmanager Digitalisierung",
+  "body": "Guten Tag,\n\nwir haben Ihre Unterlagen geprüft und möchten Sie gern kennenlernen. Wir laden Sie zu einem Video-Call am 03.12.2026 um 11:00 Uhr ein. Bitte bestätigen Sie den Termin bis zum 28.11.2026.\n\nFreundliche Grüße"
+ },
+ {
+  "id": "d03",
+  "date": "2026-11-19T08:05",
+  "from": "Bergwerk Analytics <hr@bergwerk-analytics.example>",
+  "subject": "Ihre Bewerbung bei Bergwerk Analytics",
+  "body": "Hallo,\n\nvielen Dank für Ihr Interesse. Leider haben wir uns für andere Kandidaten entschieden, deren Profil noch besser passt. Wir wünschen Ihnen viel Erfolg für Ihre weitere Suche."
+ },
+ {
+  "id": "d04",
+  "date": "2026-11-20T10:40",
+  "from": "Seewind Energie Recruiting <jobs@seewind-energie.example>",
+  "subject": "Rückfrage zu Ihrer Bewerbung als Projektkoordinator",
+  "body": "Hallo,\n\nzu Ihrer Bewerbung als Projektkoordinator hätten wir eine Rückfrage: Könnten Sie uns Ihre Gehaltsvorstellung und Ihre Verfügbarkeit bis zum 05.12.2026 mitteilen?\n\nDanke und viele Grüße"
+ },
+ {
+  "id": "d05",
+  "date": "2026-11-20T18:00",
+  "from": "Jobportal <jobalert@jobportal.example>",
+  "subject": "12 neue Jobs für dich: Projektmanager in deiner Nähe",
+  "body": "Passende Stellen für dich: Projektmanager, PMO Analyst, Scrum Master. Job-Alert abbestellen? Hier abmelden."
+ },
+ {
+  "id": "d06",
+  "date": "2026-11-21T07:30",
+  "from": "Modehaus Nord <newsletter@modehaus-nord.example>",
+  "subject": "Nur heute: 30 % auf alles",
+  "body": "Jetzt sichern! Gutschein-Code im Shop einlösen. Newsletter abbestellen."
+ },
+ {
+  "id": "d07",
+  "date": "2026-11-21T11:00",
+  "from": "Stadtwerke Musterstadt <service@stadtwerke-musterstadt.example>",
+  "subject": "Ihre Rechnung November 2026",
+  "body": "Sehr geehrte Kundin, sehr geehrter Kunde,\n\nanbei erhalten Sie Ihre Rechnung. Der Rechnungsbetrag ist zahlbar bis 15.12.2026.\n\nIhre Stadtwerke",
+  "attachments": [
+   {
+    "filename": "Rechnung_2026-11.pdf",
+    "text": "%PDF-1.4\n% Demo-Anhang (kein echtes Dokument)\nRechnung November 2026"
+   }
+  ]
+ },
+ {
+  "id": "d08",
+  "date": "2026-11-22T09:20",
+  "from": "Hansa Versicherung <post@hansa-versicherung.example>",
+  "subject": "Beitragsanpassung Ihrer Hausratversicherung",
+  "body": "Guten Tag,\n\nzum 01.01.2027 passen wir den Beitrag Ihrer Hausratversicherung an. Die Details finden Sie im Anhang zu Ihrem Versicherungsschein.",
+  "attachments": [
+   {
+    "filename": "Beitragsanpassung.pdf",
+    "text": "%PDF-1.4\n% Demo-Anhang (kein echtes Dokument)\nBeitragsanpassung"
+   }
+  ]
+ },
+ {
+  "id": "d09",
+  "date": "2026-11-23T16:45",
+  "from": "Gaswerk Süd <vertrag@gaswerk-sued.example>",
+  "subject": "Bestätigung Ihres Tarifwechsels",
+  "body": "Hallo,\n\nwir bestätigen Ihren Tarifwechsel zum 01.04.2027. Sie können Ihren Vertrag bis zum 07.12.2026 widerrufen.",
+  "attachments": [
+   {
+    "filename": "Vertragsbestaetigung.pdf",
+    "text": "%PDF-1.4\n% Demo-Anhang (kein echtes Dokument)\nVertragsbestätigung"
+   }
+  ]
+ },
+ {
+  "id": "d10",
+  "date": "2026-11-24T12:00",
+  "from": "Steuerportal <noreply@steuerportal.example>",
+  "subject": "Ihr Steuerbescheid ist abrufbar",
+  "body": "In Ihrem Postfach liegt ein neuer Steuerbescheid zur Einkommensteuer 2025 vom Finanzamt."
+ },
+ {
+  "id": "d11",
+  "date": "2026-11-24T15:10",
+  "from": "Hausverwaltung Lindenhof <info@lindenhof-verwaltung.example>",
+  "subject": "Nebenkostenabrechnung 2025",
+  "body": "Sehr geehrte Mieter,\n\nanbei die Nebenkostenabrechnung für Ihre Wohnung. Die Nachzahlung ist fällig am 31.12.2026.",
+  "attachments": [
+   {
+    "filename": "NK-Abrechnung_2025.pdf",
+    "text": "%PDF-1.4\n% Demo-Anhang (kein echtes Dokument)\nNebenkosten"
+   }
+  ]
+ },
+ {
+  "id": "d12",
+  "date": "2026-11-25T06:00",
+  "from": "Musterbank <service@musterbank.example>",
+  "subject": "Neuer Kontoauszug verfügbar",
+  "body": "Für Ihr Girokonto steht ein neuer Kontoauszug im Online-Banking bereit."
+ },
+ {
+  "id": "d13",
+  "date": "2026-11-25T19:30",
+  "from": "Sam <sam.beispiel@example.com>",
+  "subject": "Fotos vom Wochenende",
+  "body": "Hey, hier wie versprochen der Link zu den Fotos. Bis bald!"
+ },
+ {
+  "id": "d14",
+  "date": "2026-11-21T11:00",
+  "from": "Stadtwerke Musterstadt <service@stadtwerke-musterstadt.example>",
+  "subject": "Ihre Rechnung November 2026",
+  "body": "Sehr geehrte Kundin, sehr geehrter Kunde,\n\nanbei erhalten Sie Ihre Rechnung. Der Rechnungsbetrag ist zahlbar bis 15.12.2026.\n\nIhre Stadtwerke",
+  "attachments": [
+   {
+    "filename": "Rechnung_2026-11.pdf",
+    "text": "%PDF-1.4\n% Demo-Anhang (kein echtes Dokument)\nRechnung November 2026"
+   }
+  ]
+ },
+ {
+  "id": "d15",
+  "date": "2026-11-26T09:00",
+  "from": "Personal <karriere@kranich-logistik.example>",
+  "subject": "Ihr Vertragsangebot als Projektmanager",
+  "body": "Guten Tag,\n\nnach den guten Gesprächen freuen wir uns, Ihnen ein Vertragsangebot für die Position als Projektmanager zu machen. Bitte geben Sie uns bis zum 10.12.2026 Bescheid.",
+  "attachments": [
+   {
+    "filename": "Arbeitsvertrag_Entwurf.pdf",
+    "text": "%PDF-1.4\n% Demo-Anhang (kein echtes Dokument)\nVertragsentwurf"
+   }
+  ]
+ }
+]

@@ -1,0 +1,12 @@
+__pycache__/
+*.egg-info/
+.venv/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+demo-ablage/
+ablage/
+rules.toml
+*.log
+.env

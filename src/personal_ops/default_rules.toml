@@ -1,0 +1,101 @@
+# Regeln fuer agentic-personal-ops
+# Alles, was das System entscheidet, steht hier und nicht im Code.
+# Stichwoerter werden kleingeschrieben verglichen. Treffer im Betreff zaehlen doppelt.
+
+[general]
+# Ordner fuer die Ablage (z. B. ein per Google Drive for Desktop synchronisierter Ordner)
+target_dir = "ablage"
+# Unter diesem Score landet eine Mail in "00 Eingang" zur menschlichen Pruefung
+min_score = 2.0
+# Melden nur, wenn eine Handlung noetig ist ("Signal statt Rauschen")
+notify_on = [
+  "bewerbung/einladung",
+  "bewerbung/rueckfrage",
+  "bewerbung/angebot",
+  "bewerbung/absage",
+]
+# Ordner fuer unklare Mails (Human-in-the-loop)
+review_folder = "00 Eingang"
+# Tracker fuer Bewerbungen (Bruecke zu anderen Tools/Agenten)
+tracker = "Bewerbungen/tracker.csv"
+# Generische Absender-Domains: hier wird der Anzeigename statt der Domain genutzt
+generic_domains = ["gmail.com", "gmx.de", "web.de", "outlook.com", "icloud.com", "example.com"]
+
+# ---------------------------------------------------------------------------
+# Werbung: wird nie abgelegt
+[[categories]]
+label = "werbung"
+action = "ignore"
+keywords = [
+  "newsletter", "abmelden", "abbestellen", "unsubscribe", "rabatt", "% auf",
+  "nur heute", "jetzt sichern", "gutschein", "job-alert", "jobs für dich",
+  "neue jobs", "passende stellen", "empfehlungen für dich", "angebot der woche",
+]
+senders = ["newsletter", "marketing", "jobalert", "no-reply@jobs", "news@"]
+
+# ---------------------------------------------------------------------------
+# Bewerbungen: erst muss die Gruppe passen, dann entscheidet der Untertyp
+[groups.bewerbung]
+keywords = [
+  "ihre bewerbung", "deine bewerbung", "bewerbung als", "bewerbung für",
+  "bewerbungsprozess", "ihre unterlagen", "deine unterlagen", "auswahlprozess",
+  "position als", "stelle als", "vorstellungsgespräch", "recruiting",
+]
+folder = "Bewerbungen/{company}"
+
+[[categories]]
+label = "bewerbung/eingangsbestaetigung"
+group = "bewerbung"
+keywords = ["eingegangen", "erhalten", "vielen dank für ihre bewerbung", "danke für deine bewerbung", "eingangsbestätigung", "melden uns"]
+
+[[categories]]
+label = "bewerbung/einladung"
+group = "bewerbung"
+keywords = ["einladung", "einladen", "kennenlernen", "interview", "gespräch am", "termin", "video-call", "vorstellungsgespräch"]
+
+[[categories]]
+label = "bewerbung/rueckfrage"
+group = "bewerbung"
+keywords = ["rückfrage", "frage zu", "könnten sie uns", "kannst du uns", "bitte senden sie", "nachreichen", "gehaltsvorstellung", "verfügbarkeit"]
+
+[[categories]]
+label = "bewerbung/absage"
+group = "bewerbung"
+keywords = ["leider", "absage", "nicht berücksichtigen", "anderen kandidaten", "entschieden", "viel erfolg für ihre", "nicht weiter"]
+
+[[categories]]
+label = "bewerbung/angebot"
+group = "bewerbung"
+keywords = ["angebot", "vertragsangebot", "arbeitsvertrag", "freuen uns, ihnen", "zusage", "willkommen im team"]
+
+# ---------------------------------------------------------------------------
+# Private Verwaltung
+[[categories]]
+label = "privat/rechnungen"
+folder = "06 Rechnungen & Belege/{year}"
+keywords = ["rechnung", "rechnungsnummer", "rechnungsbetrag", "zahlungsziel", "beleg", "quittung", "bestellbestätigung"]
+
+[[categories]]
+label = "privat/versicherungen"
+folder = "05 Versicherungen"
+keywords = ["versicherung", "police", "versicherungsschein", "beitragsanpassung", "schadenfall", "versicherungsnummer"]
+
+[[categories]]
+label = "privat/vertraege"
+folder = "04 Verträge"
+keywords = ["vertrag", "vertragsbestätigung", "kündigung", "laufzeit", "tarif", "tarifwechsel", "widerruf"]
+
+[[categories]]
+label = "privat/steuern"
+folder = "03 Steuern/{year}"
+keywords = ["finanzamt", "steuerbescheid", "elster", "einkommensteuer", "steuererklärung", "lohnsteuerbescheinigung"]
+
+[[categories]]
+label = "privat/wohnen"
+folder = "09 Wohnen"
+keywords = ["miete", "nebenkosten", "vermieter", "hausverwaltung", "wohnung", "zählerstand", "abschlag"]
+
+[[categories]]
+label = "privat/finanzen"
+folder = "02 Finanzen"
+keywords = ["kontoauszug", "depot", "girokonto", "kreditkarte", "überweisung", "sparplan", "kontostand"]

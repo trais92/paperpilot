@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import argparse
 import getpass
-import os
 import shutil
 import sys
+from collections.abc import Callable
 from datetime import datetime
 from importlib import resources
 from pathlib import Path
@@ -14,8 +14,10 @@ from pathlib import Path
 from . import __version__
 from .classify import make_classifier
 from .config import default_rules_text, load_rules
+from .credentials import EnvCredentialStore
 from .evaluate import evaluate, render_eval
 from .pipeline import render_report, run
+from .ports import CredentialStore, MailSource
 from .sources import ImapSource, JsonSource
 from .store import LocalStore
 
@@ -32,28 +34,32 @@ def cmd_demo(args: argparse.Namespace) -> int:
     store = LocalStore(out)
     mails = list(JsonSource(_data("demo_inbox.json")).fetch(store.last_run()))
     result = run(mails, make_classifier("rules", rules), rules, store, apply=True)
-    print(render_report(result, out))
+    print(render_report(result, store.location))
     print("\nTipp: 'paperpilot demo' nochmal ausführen zeigt die Idempotenz (0 neue Mails).")
     print("      'paperpilot eval' misst die Trefferquote auf dem Testset.")
     return 0
+
+
+def _imap_source(creds: CredentialStore) -> ImapSource:
+    """IMAP-Quelle aus gespeicherten Zugangsdaten, fehlende werden abgefragt (und nicht gespeichert)."""
+    host = creds.get("imap_host") or "imap.gmail.com"
+    user = creds.get("imap_user") or input("IMAP-Benutzer: ")
+    password = creds.get("imap_password") or getpass.getpass("App-Passwort (wird nicht gespeichert): ")
+    return ImapSource(host, user, password)
 
 
 def cmd_run(args: argparse.Namespace) -> int:
     rules = load_rules(args.rules)
     store = LocalStore(args.target or rules.target_dir)
     since = datetime.fromisoformat(args.since) if args.since else store.last_run()
+    source: MailSource
     if args.source == "imap":
-        host = os.environ.get("PAPERPILOT_IMAP_HOST", "imap.gmail.com")
-        user = os.environ.get("PAPERPILOT_IMAP_USER") or input("IMAP-Benutzer: ")
-        password = os.environ.get("PAPERPILOT_IMAP_PASSWORD") or getpass.getpass(
-            "App-Passwort (wird nicht gespeichert): "
-        )
-        source = ImapSource(host, user, password)
+        source = _imap_source(EnvCredentialStore())
     else:
         source = JsonSource(args.input or _data("demo_inbox.json"))
     mails = list(source.fetch(since))
     result = run(mails, make_classifier(args.classifier, rules), rules, store, apply=args.apply)
-    print(render_report(result, store.root))
+    print(render_report(result, store.location))
     return 0
 
 
@@ -116,7 +122,8 @@ def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")  # Umlaute auch in der Windows-Konsole
     args = build_parser().parse_args(argv)
-    return args.func(args)
+    command: Callable[[argparse.Namespace], int] = args.func
+    return command(args)
 
 
 if __name__ == "__main__":

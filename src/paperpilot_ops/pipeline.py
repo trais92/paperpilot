@@ -9,14 +9,14 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
 
-from .classify import UNCLEAR, Classifier
+from .classify import UNCLEAR
 from .config import Rules
 from .deadlines import extract_deadlines
-from .models import Mail, MailPlan, PlannedFile
+from .models import Deadline, Mail, MailPlan, PlannedFile
 from .naming import build_filename, company_from_mail
-from .store import LocalStore, sha256, update_deadlines, update_tracker
+from .ports import Classifier, StorageTarget
+from .store import sha256, update_deadlines, update_tracker
 
 
 def mail_as_markdown(mail: Mail) -> bytes:
@@ -27,7 +27,8 @@ def mail_as_markdown(mail: Mail) -> bytes:
     ).encode()
 
 
-def plan_mail(mail: Mail, classifier: Classifier, rules: Rules, store: LocalStore, seen: set[str]) -> MailPlan:
+def plan_mail(mail: Mail, classifier: Classifier, rules: Rules, store: StorageTarget, seen: set[str]) -> MailPlan:
+    """Entscheidet, was mit einer Mail passiert. Rein lesend: schreibt nichts in `store`."""
     c = classifier.classify(mail)
     cat = rules.category(c.label)
     company = company_from_mail(mail, rules.generic_domains)
@@ -76,16 +77,17 @@ def run(
     mails: Iterable[Mail],
     classifier: Classifier,
     rules: Rules,
-    store: LocalStore,
+    store: StorageTarget,
     apply: bool = False,
 ) -> RunResult:
+    """Plant alle Mails und führt den Plan nur bei `apply=True` aus (Trockenlauf ist Standard)."""
     seen: set[str] = set()
     plans = [plan_mail(m, classifier, rules, store, seen) for m in sorted(mails, key=lambda m: m.date)]
     result = RunResult(plans=plans)
     if not apply:
         return result
 
-    all_deadlines = []
+    all_deadlines: list[Deadline] = []
     for p in plans:
         if p.action not in ("file", "review"):
             continue
@@ -95,18 +97,16 @@ def run(
         if p.classification.group in rules.groups:
             frist = f" · Frist {p.deadlines[0].date:%Y-%m-%d}" if p.deadlines else ""
             note = f"NEU {p.mail.date:%Y-%m-%d} · {p.classification.subtype} · {p.mail.subject}{frist}"
-            update_tracker(
-                store.root / rules.tracker, p.company, p.classification.subtype, p.mail.date, p.mail.subject, note
-            )
+            update_tracker(store, rules.tracker, p.company, p.classification.subtype, p.mail.date, p.mail.subject, note)
     if all_deadlines:
-        update_deadlines(store.root / "Fristen", all_deadlines)
+        update_deadlines(store, "Fristen", all_deadlines)
     newest = max((p.mail.date for p in plans), default=None)
     store.save(newest)
     result.applied = True
     return result
 
 
-def render_report(result: RunResult, root: Path, now: datetime | None = None) -> str:
+def render_report(result: RunResult, location: str, now: datetime | None = None) -> str:
     now = now or datetime.now()
     filed, review = result.by_action("file"), result.by_action("review")
     ignored, dup = result.by_action("ignore"), result.by_action("duplicate")
@@ -139,5 +139,5 @@ def render_report(result: RunResult, root: Path, now: datetime | None = None) ->
     if ignored:
         lines.append(f"\nIGNORIERT: {len(ignored)} Werbe-/Alert-Mails")
     if result.applied:
-        lines.append(f"\nAblage: {root.resolve()}")
+        lines.append(f"\nAblage: {location}")
     return "\n".join(line for line in lines if line is not None)

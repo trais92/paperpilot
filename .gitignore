@@ -10,3 +10,4 @@ ablage/
 rules.toml
 *.log
 .env
+.coverage

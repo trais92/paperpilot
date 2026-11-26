@@ -2,7 +2,7 @@ import csv
 
 from paperpilot_ops.classify import RuleClassifier
 from paperpilot_ops.pipeline import run
-from paperpilot_ops.store import LocalStore
+from paperpilot_ops.store import LocalStore, MemoryStore
 
 
 def _mails(make_mail):
@@ -57,8 +57,19 @@ def test_apply_files_tracks_and_is_idempotent(tmp_path, rules, make_mail):
     assert {p.action for p in third.plans} <= {"duplicate", "ignore"}
 
 
-def test_never_overwrites(tmp_path):
-    store = LocalStore(tmp_path)
-    a = store.write_file("x/a.txt", b"1")
-    b = store.write_file("x/a.txt", b"2")
-    assert a.read_bytes() == b"1" and b.name == "a-2.txt"
+def test_pipeline_works_with_any_storage_target(rules, make_mail):
+    """Der Kern kennt nur den Port: derselbe Lauf funktioniert ohne Dateisystem."""
+    store = MemoryStore()
+    result = run(_mails(make_mail), RuleClassifier(rules), rules, store, apply=True)
+
+    assert result.applied
+    assert "06 Rechnungen & Belege/2026/2026-11-19_Stadtwerke_Rechnung.pdf" in store.files
+    assert "Bewerbungen/tracker.csv" in store.texts
+    assert "20261215" in (store.read_text("Fristen/fristen.ics") or "")
+    assert store.last_run() is not None
+
+
+def test_dry_run_writes_nothing_to_memory_store(rules, make_mail):
+    store = MemoryStore()
+    run(_mails(make_mail), RuleClassifier(rules), rules, store)
+    assert store.files == {} and store.texts == {} and store.last_run() is None

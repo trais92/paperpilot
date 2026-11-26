@@ -4,16 +4,15 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Protocol
+from typing import Any
 
 from .config import Rules
 from .models import Classification, Mail
+from .ports import Classifier
+
+__all__ = ["UNCLEAR", "Classifier", "LLMClassifier", "RuleClassifier", "make_classifier"]
 
 UNCLEAR = "unklar"
-
-
-class Classifier(Protocol):
-    def classify(self, mail: Mail) -> Classification: ...
 
 
 def _hits(keywords: tuple[str, ...], mail: Mail) -> float:
@@ -78,7 +77,7 @@ class LLMClassifier:
 
     MODEL = os.environ.get("PAPERPILOT_MODEL", "claude-opus-5-5")
 
-    def __init__(self, rules: Rules, client=None):
+    def __init__(self, rules: Rules, client: Any = None):
         self.rules = rules
         if client is None:
             import anthropic  # optional dependency

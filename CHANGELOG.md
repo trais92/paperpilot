@@ -1,5 +1,18 @@
 # Changelog
 
+## Unveröffentlicht
+
+Architektur-Grundlage für die nächsten Schritte (Roadmap Phase 0). Verhalten und Ergebnisse der CLI sind unverändert.
+
+- Ports in `ports.py`: `MailSource`, `Classifier`, `StorageTarget`, `CredentialStore`. Pipeline und Evaluation hängen nur noch davon ab.
+- Neues Ablageziel `MemoryStore` für Tests; Tracker und Fristen werden über das Ablageziel geschrieben statt über Pfade.
+- `EnvCredentialStore`: IMAP-Zugangsdaten werden über den Port gelesen.
+- `LocalStore.write_file()` gibt den relativen Pfad zurück (vorher `Path`).
+- IMAP: Antworten ohne Inhalt werden übersprungen statt abzubrechen.
+- Vertragstest für Ablageziele, Tests für Zugangsdaten und eine Pipeline ohne Dateisystem (40 Tests).
+- CI: Formatprüfung, `mypy --strict`, Testabdeckung mindestens 85 %.
+- Architekturentscheidungen in `docs/adr/` (0001 bis 0006), Roadmap auf das neue Zielbild umgestellt.
+
 ## 0.1.0 – 2026-11-26
 
 Erste Version.

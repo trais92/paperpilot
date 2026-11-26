@@ -1,30 +1,50 @@
 # Roadmap
 
-Priorisiert nach Nutzen für die Aussagekraft des Projekts. Jeder Punkt nennt ein Kriterium, wann er fertig ist.
+Ziel ist ein Werkzeug, das man ohne Programmierkenntnisse herunterlädt, im Browser einrichtet und das danach selbstständig sortiert: Eine KI erkennt Kategorie und wichtige Angaben jeder Mail, die Dokumente landen in einer geordneten Ordnerstruktur, lokal oder in Google Drive, und jeder Lauf wird vor dem Schreiben freigegeben. Die Entscheidungen dahinter stehen in [docs/adr/](adr/README.md).
 
-## Als Nächstes
+Jeder Schritt ist ein eigener Pull Request mit Tests, Doku und, wo nötig, einem ADR. `main` bleibt grün.
 
-| # | Vorhaben | Fertig, wenn |
-|---|---|---|
-| 1 | **LLM-Klassifizierer mit echtem API-Schlüssel messen** | `paperpilot eval --classifier llm` läuft, Ergebnis und Kosten pro Mail stehen in `docs/evaluation.md` |
-| 2 | **Größeres Testset** (≥ 200 Mails, ≥ 10 pro Klasse) mit Holdout | Testset mit `split`-Feld, `eval` berichtet getrennt für Dev und Holdout |
-| 3 | **Hybrid-Klassifizierer**: Regeln zuerst, LLM nur bei `unklar` | `--classifier hybrid`, Übergabequote und Kosten im Vergleich dokumentiert |
-| 4 | **Konfusionsmatrix und JSON-Report** in `eval` | `paperpilot eval --json report.json`, Matrix im Textbericht |
-| 5 | **Stichwort-Normalisierung** (Flexion, Umlaut-Varianten, z. B. „ihre/ihrer bewerbung“) | Nur auf einem neuen Dev-Set entwickelt, Holdout-Ergebnis dokumentiert |
+## Phase 0: Architektur-Grundlage
 
-## Danach
+| # | Vorhaben | Fertig, wenn | Stand |
+|---|---|---|---|
+| 0 | Ports für Ablageziel und Zugangsdaten, ADRs, `mypy --strict` und Testabdeckung in der CI | Kern hängt nur von `ports.py` ab, Vertragstest für Ablageziele, ADR 0001 bis 0006 | erledigt |
+
+## Phase 1: KI und Ablage als Kern
 
 | # | Vorhaben | Fertig, wenn |
 |---|---|---|
-| 6 | Strukturierte Extraktion aus PDF-Anhängen (Betrag, Datum, Vertrags-/Rechnungsnummer) | Felder landen in einer `belege.csv`, Testfälle mit Beispiel-PDFs |
-| 7 | Google Drive und Kalender direkt über die APIs statt Sync-Ordner und `.ics` | Optionales Extra `[google]`, OAuth-Anleitung, Trockenlauf unverändert |
-| 8 | Lauf-Protokoll (`runs.jsonl`) und kleines HTML-Dashboard | `paperpilot report` erzeugt eine statische Seite mit Läufen, Ablagen, Meldungen |
-| 9 | MCP-Server, damit ein KI-Agent PaperPilot als Werkzeug nutzt (`plan`, `apply`, `eval`) | Server startet, `apply` verlangt eine ausdrückliche Bestätigung |
-| 10 | Mails als PDF statt Markdown ablegen | Optionales Extra, Standard bleibt abhängigkeitsfrei |
-| 11 | Paket auf PyPI veröffentlichen (`paperpilot-ops`) | `pip install paperpilot-ops` funktioniert, Release per GitHub Action |
+| 1 | Zugangsdaten im Schlüsselbund ([ADR 0004](adr/0004-zugangsdaten-im-schluesselbund.md)) | App-Passwort einmal eingeben, der nächste Lauf fragt nicht; Befehl zum Löschen |
+| 2 | KI-Anbindung: Mistral, Groq als Reserve, Claude ([ADR 0003](adr/0003-ki-fest-eingebaut.md)) | Eine Mail ergibt Kategorie oder `unklar`; Gratis-Anbieter ohne Zusatzpaket; Antworten werden gegen erlaubte Kategorien geprüft |
+| 3 | Wählbare Kategorien, auch eigene, mit Ordnerstruktur und Übersichtstabelle ([ADR 0005](adr/0005-ablage-ordnerstruktur-lokal-oder-drive.md)) | Demo-Lauf legt nur die gewählten Ordner an und füllt deren Übersicht |
+| 4 | KI liest Felder aus Mail und PDF-Anhang aus (Betrag, Datum, Nummer, Fristen) | Felder landen in der Übersicht; gescannte PDFs ohne Text gehen in den Eingang |
+| 5 | Neues Testset (≥ 200 erfundene Mails mit Feldern, `split: dev\|holdout`), Messung von Kategorie und Feldern je Anbieter, `eval --json`, Konfusionsmatrix | Zahlen für Regeln, Mistral, Groq und Claude in `docs/evaluation.md` |
+
+## Phase 2: Bedienung ohne Terminal
+
+| # | Vorhaben | Fertig, wenn |
+|---|---|---|
+| 6 | Bericht mit Freigabe als lokale Seite im Browser | „Freigeben“ ersetzt `--apply`; Angaben lassen sich vorher korrigieren |
+| 7 | Google Drive als Ablageziel mit direkter Anmeldung, Übersicht als Google-Tabelle | Derselbe Lauf legt in Drive dieselbe Struktur an wie lokal; Vertragstest grün |
+| 8 | Einrichtungsassistent im Browser: Postfach, Kategorien, KI-Schlüssel, Ablageziel, Zeitplan | Neuer Rechner bis zum ersten Lauf ohne Terminal |
+| 9 | Programm für Windows und macOS, Veröffentlichung auf PyPI (`paperpilot-ops`) | Download, Doppelklick, Assistent öffnet sich; Release per GitHub Action |
+
+## Phase 3: Demo-Seite und Erweiterungen
+
+| # | Vorhaben | Fertig, wenn |
+|---|---|---|
+| 10 | Demo-Seite ohne Installation (statische Seite aus einem Demo-Lauf) | Link im README zeigt Bericht, Ordnerstruktur und Messwerte |
+| 11 | Connector (MCP) für die Claude-App | Claude kann einen Lauf planen; abgelegt wird erst nach ausdrücklicher Bestätigung |
+| – | Später: Termine direkt in Google Kalender, Mails als PDF ablegen | wird bei Bedarf eingeplant |
+
+## Entfallen
+
+- **Hybrid-Klassifizierer** (Regeln zuerst, KI nur bei `unklar`) und **Stichwort-Normalisierung**: Die KI übernimmt das Sortieren, die Regeln sind nur noch Vorfilter ([ADR 0003](adr/0003-ki-fest-eingebaut.md)).
+- **Import von `.eml`/`mbox`**: IMAP bleibt die einzige Quelle für echte Mails ([ADR 0006](adr/0006-imap-als-einzige-mailquelle.md)).
 
 ## Bewusst nicht geplant
 
-- Mails beantworten oder löschen. PaperPilot liest und sortiert, handeln tut der Mensch.
-- Zugangsdaten speichern.
-- Selbstlernende Regeln ohne Kontrolle. Änderungen an `rules.toml` bleiben menschliche Entscheidungen, die `eval` absichert.
+- Mails beantworten, verschieben oder löschen. PaperPilot liest und sortiert, handeln tut der Mensch.
+- Zugangsdaten in Dateien speichern. Erlaubt ist nur der Schlüsselbund des Betriebssystems.
+- Lokale KI-Modelle.
+- Ausführen ohne Freigabe. Auch automatische Läufe zeigen erst einen Plan.

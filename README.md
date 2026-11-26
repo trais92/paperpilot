@@ -212,21 +212,23 @@ schtasks /create /tn "paperpilot-mail" /sc daily /st 09:00 /tr "paperpilot run -
 
 ```bash
 pip install -e ".[dev]"
-pytest            # 20 Tests
-ruff check .
+pytest --cov=paperpilot_ops   # 40 Tests, Abdeckung
+ruff check . && ruff format --check .
+mypy                          # strenge Typprüfung
 paperpilot eval --min-accuracy 0.85
 ```
 
-Die CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) prüft auf Python 3.11 bis 3.13 Lint, Tests, Demo-Lauf und die Mindest-Trefferquote.
+Die CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) prüft auf Python 3.11 bis 3.13 Lint, Format, Typen (`mypy --strict`), Tests mit mindestens 85 % Abdeckung, den Demo-Lauf und die Mindest-Trefferquote.
 
 ## Dokumentation
 
 | Dokument | Inhalt |
 |---|---|
-| [docs/architecture.md](docs/architecture.md) | Komponenten, Datenfluss, Zustände, Designentscheidungen |
+| [docs/architecture.md](docs/architecture.md) | Ports und Adapter, Komponenten, Datenfluss, Designentscheidungen |
+| [docs/adr/](docs/adr/README.md) | Architekturentscheidungen mit Alternativen und Folgen |
 | [docs/configuration.md](docs/configuration.md) | Alle Felder der Regeldatei, Scoring, Beispiele |
 | [docs/evaluation.md](docs/evaluation.md) | Testset, Metriken, Fehleranalyse, Grenzen |
-| [docs/roadmap.md](docs/roadmap.md) | Geplante Erweiterungen |
+| [docs/roadmap.md](docs/roadmap.md) | Zielbild und geplante Schritte |
 | [CLAUDE.md](CLAUDE.md) | Übergabe und Arbeitsregeln für die Weiterentwicklung |
 | [CHANGELOG.md](CHANGELOG.md) | Versionen |
 

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
+from typing import Any
 
-from .classify import Classifier
+from .ports import Classifier
 from .sources import mail_from_dict
 
 
@@ -33,8 +34,10 @@ def _div(a: float, b: float) -> float:
     return a / b if b else 0.0
 
 
-def evaluate(classifier: Classifier, samples: list[dict]) -> EvalReport:
-    gold, pred, errors = [], [], []
+def evaluate(classifier: Classifier, samples: list[dict[str, Any]]) -> EvalReport:
+    gold: list[str] = []
+    pred: list[str] = []
+    errors: list[tuple[str, str, str, str]] = []
     for s in samples:
         mail = mail_from_dict(s)
         p = classifier.classify(mail).label
@@ -42,7 +45,9 @@ def evaluate(classifier: Classifier, samples: list[dict]) -> EvalReport:
         pred.append(p)
         if p != s["label"]:
             errors.append((s["id"], s["subject"], s["label"], p))
-    tp, fp, fn = Counter(), Counter(), Counter()
+    tp: Counter[str] = Counter()
+    fp: Counter[str] = Counter()
+    fn: Counter[str] = Counter()
     for g, p in zip(gold, pred, strict=True):
         if g == p:
             tp[g] += 1

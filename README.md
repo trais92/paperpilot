@@ -183,7 +183,10 @@ Von den 5 Fehlern landen 3 als `unklar` beim Menschen. Nur 2 bekommen ein falsch
 paperpilot init
 paperpilot run --source imap --rules rules.toml --target "G:/Meine Ablage/Persönlich"           # Trockenlauf
 paperpilot run --source imap --rules rules.toml --target "G:/Meine Ablage/Persönlich" --apply   # ausführen
+paperpilot run --source imap --rules rules.toml --browser   # im Browser prüfen, korrigieren, freigeben
 ```
+
+Mit `--browser` öffnet sich eine lokale Seite mit dem Plan: pro Mail die erkannte Kategorie, das Ziel und die Begründung. Falsche Kategorien lassen sich dort ändern, erst „Freigeben und ablegen“ schreibt. Die Seite ist nur vom eigenen Rechner aus erreichbar und kommt ohne JavaScript aus ([Sicherheitskonzept](docs/security.md#bericht-im-browser)).
 
 - **Gmail:** IMAP aktivieren und ein App-Passwort anlegen.
 - **Zugang einmal speichern:** `pip install ".[keyring]"` und `paperpilot login`. PaperPilot meldet sich zur Probe an und legt Server, Benutzer und App-Passwort im Schlüsselbund des Betriebssystems ab (Windows-Anmeldeinformationsverwaltung, macOS-Schlüsselbund, Secret Service unter Linux), nie in einer Datei. `paperpilot login --status` zeigt, was gespeichert ist, `paperpilot logout` löscht alles wieder.
@@ -219,7 +222,7 @@ schtasks /create /tn "paperpilot-mail" /sc daily /st 09:00 /tr "paperpilot run -
 | Befehl | Zweck | Wichtige Optionen |
 |---|---|---|
 | `paperpilot demo` | Komplettlauf auf Beispieldaten | `--out DIR`, `--reset`, `--rules` |
-| `paperpilot run` | Postfach einsortieren (Standard: Trockenlauf) | `--source json\|imap`, `--input`, `--storage local\|drive`, `--target`, `--classifier ai\|rules`, `--since`, `--apply` |
+| `paperpilot run` | Postfach einsortieren (Standard: Trockenlauf) | `--source json\|imap`, `--input`, `--storage local\|drive`, `--target`, `--classifier ai\|rules`, `--since`, `--apply`, `--browser` |
 | `paperpilot eval` | Trefferquote messen | `--testset`, `--classifier`, `--min-accuracy` |
 | `paperpilot init` | Regeldatei anlegen | `--path` |
 | `paperpilot login` | Postfach-Zugang oder KI-Schlüssel im Schlüsselbund speichern | `--ai groq\|claude`, `--google`, `--status`, `--no-check` |

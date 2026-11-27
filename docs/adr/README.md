@@ -12,6 +12,7 @@ Jede Entscheidung, die die Struktur von PaperPilot prägt, steht hier als kurzes
 | [0006](0006-imap-als-einzige-mailquelle.md) | IMAP als einzige Quelle für echte Mails | Akzeptiert | erledigt |
 | [0007](0007-ki-schicht-mit-austauschbaren-modellen.md) | KI-Schicht mit austauschbaren Sprachmodellen | Akzeptiert | erledigt |
 | [0008](0008-google-drive-adapter.md) | Google-Drive-Adapter mit Standardbibliothek und Anmeldung im Browser | Akzeptiert | erledigt, echter Test offen |
+| [0009](0009-bericht-mit-freigabe-im-browser.md) | Bericht mit Freigabe als lokale Seite ohne JavaScript | Akzeptiert | erledigt |
 
 ## Vorlage
 

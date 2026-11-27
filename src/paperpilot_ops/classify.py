@@ -6,11 +6,13 @@ als Vergleichswert in `paperpilot eval` und für die Demo ohne Schlüssel.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from .config import Rules
 from .models import Classification, Mail
 from .ports import Classifier
 
-__all__ = ["UNCLEAR", "Classifier", "RuleClassifier"]
+__all__ = ["UNCLEAR", "Classifier", "FixedClassifier", "RuleClassifier"]
 
 UNCLEAR = "unklar"
 
@@ -66,3 +68,17 @@ class RuleClassifier:
             return Classification(UNCLEAR, 0.0, f"bester Score {best_s:g} < {self.rules.min_score:g}")
         conf = round(best_s / (best_s + second_s), 2) if best_s + second_s else 0.0
         return Classification(best, conf, f"Score {best_s:g}, naechster {second_s:g}")
+
+
+class FixedClassifier:
+    """Gibt vorher ermittelte Klassifizierungen zurück, z. B. nach Korrektur im Browser-Bericht.
+
+    So wird beim Ausführen nicht erneut eine KI gefragt, und Korrekturen des Menschen gelten genau.
+    Unbekannte Mails ergeben `unklar` (Regel 5).
+    """
+
+    def __init__(self, results: Mapping[str, Classification]):
+        self._results = dict(results)
+
+    def classify(self, mail: Mail) -> Classification:
+        return self._results.get(mail.id, Classification(UNCLEAR, 0.0, "nicht im freigegebenen Plan"))

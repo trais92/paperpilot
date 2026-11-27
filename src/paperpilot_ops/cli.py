@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import secrets
 import shutil
 import sys
 from collections.abc import Callable
@@ -18,10 +19,12 @@ from .composition import CLASSIFIERS, MissingGoogleLoginError, describe_classifi
 from .config import AI_PROVIDERS, STORAGE_TARGETS, Rules, default_rules_text, load_rules
 from .credentials import KEYS, CredentialStoreError, KeyringCredentialStore, default_credential_store
 from .evaluate import evaluate, render_eval
-from .pipeline import render_report, run
-from .ports import Classifier, CredentialStore, MailSource, MutableCredentialStore
+from .models import Mail
+from .pipeline import RunResult, render_report, run
+from .ports import Classifier, CredentialStore, MailSource, MutableCredentialStore, StorageTarget
 from .sources import ImapSource, JsonSource
 from .store import LocalStore
+from .web import ReviewSession, serve
 
 
 def _data(name: str) -> Path:
@@ -192,8 +195,35 @@ def cmd_run(args: argparse.Namespace) -> int:
         source = JsonSource(args.input or _data("demo_inbox.json"))
     mails = list(source.fetch(since))
     result = run(mails, classifier, rules, store, apply=args.apply)
+    if args.browser:
+        return _review_in_browser(mails, result, rules, store)
     print(render_report(result, store.location))
     return 0
+
+
+def _review_in_browser(mails: list[Mail], plan: RunResult, rules: Rules, store: StorageTarget) -> int:
+    """Zeigt den Plan als lokale Seite und führt erst nach „Freigeben“ aus (ADR 0009)."""
+    if not plan.plans:
+        print(render_report(plan, store.location))
+        return 0
+    session = ReviewSession(mails, plan, rules, store, secrets.token_urlsafe(32))
+    print("Bericht im Browser geöffnet. Dort prüfen, korrigieren und freigeben (Abbrechen mit Strg+C).")
+    try:
+        _serve_review(session)
+    except KeyboardInterrupt:
+        pass  # Abbruch im Terminal: nichts geschrieben, wie „Abbrechen“ auf der Seite
+    if session.result is not None:
+        print(render_report(session.result, store.location))
+        return 0
+    print("Nicht freigegeben, nichts wurde geschrieben.")
+    return 1
+
+
+def _serve_review(session: ReviewSession) -> None:
+    """Naht für Tests: startet den lokalen Server und öffnet den Standardbrowser."""
+    import webbrowser
+
+    serve(session, webbrowser.open)
 
 
 def cmd_eval(args: argparse.Namespace) -> int:
@@ -239,7 +269,9 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--target", help="lokaler Ablage-Ordner (überschreibt target_dir)")
     r.add_argument("--classifier", choices=CLASSIFIERS, default="ai", help="ai (Standard) oder rules (ohne KI)")
     r.add_argument("--since", help="ISO-Datum, sonst seit letztem Lauf")
-    r.add_argument("--apply", action="store_true", help="Plan wirklich ausführen")
+    mode = r.add_mutually_exclusive_group()
+    mode.add_argument("--apply", action="store_true", help="Plan wirklich ausführen")
+    mode.add_argument("--browser", action="store_true", help="Plan im Browser prüfen, korrigieren und freigeben")
     r.set_defaults(func=cmd_run)
 
     e = sub.add_parser("eval", help="Trefferquote auf gelabeltem Testset messen")

@@ -2,6 +2,12 @@
 
 ## Unveröffentlicht
 
+### Bericht mit Freigabe im Browser (Roadmap 6)
+
+- `paperpilot run --browser`: lokale Seite mit dem Plan, Kategorien pro Mail korrigierbar, „Freigeben und ablegen“ führt aus, „Abbrechen“ schreibt nichts.
+- Ausgeführt wird genau das Gezeigte (`FixedClassifier`), ohne zweite KI-Anfrage; Korrekturen tragen die Begründung „vom Menschen korrigiert“.
+- Nur Standardbibliothek, kein JavaScript; 127.0.0.1, Zufallstoken, Origin-Prüfung, strenge CSP. ADR 0009, Sicherheitskonzept erweitert.
+
 ### Google Drive als Ablageziel (Roadmap 7)
 
 - `DriveStore`: dieselbe Ordnerstruktur in „Meine Ablage/PaperPilot“, Übersichten als Google-Tabellen, besteht den Vertragstest der Ablageziele.

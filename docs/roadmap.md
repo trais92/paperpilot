@@ -24,7 +24,7 @@ Jeder Schritt ist ein eigener Pull Request mit Tests, Doku und, wo nötig, einem
 
 | # | Vorhaben | Fertig, wenn | Stand |
 |---|---|---|---|
-| 6 | Bericht mit Freigabe als lokale Seite im Browser | „Freigeben“ ersetzt `--apply`; Angaben lassen sich vorher korrigieren |
+| 6 | Bericht mit Freigabe als lokale Seite im Browser | „Freigeben“ ersetzt `--apply`; Angaben lassen sich vorher korrigieren | Kategorien erledigt (`run --browser`, [ADR 0009](adr/0009-bericht-mit-freigabe-im-browser.md)), Felder mit 4 |
 | 7 | Google Drive als Ablageziel mit direkter Anmeldung, Übersicht als Google-Tabelle ([ADR 0008](adr/0008-google-drive-adapter.md)) | Derselbe Lauf legt in Drive dieselbe Struktur an wie lokal; Vertragstest grün | erledigt, echter Test offen |
 | 8 | Einrichtungsassistent im Browser: Postfach, Kategorien, KI-Schlüssel, Ablageziel, Zeitplan | Neuer Rechner bis zum ersten Lauf ohne Terminal |
 | 9 | Programm für Windows und macOS, Veröffentlichung auf PyPI (`paperpilot-ops`) | Download, Doppelklick, Assistent öffnet sich; Release per GitHub Action |

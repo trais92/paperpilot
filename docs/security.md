@@ -69,6 +69,19 @@ Entscheidung: [ADR 0008](adr/0008-google-drive-adapter.md). Einrichtung: [google
 | Tokens nur im Schlüsselbund bzw. Arbeitsspeicher | Refresh-Token im Schlüsselbund, Zugriffstoken nie gespeichert | `test_login_google_stores_token_in_keyring` |
 | Tokens nie in Meldungen | eigene Fehlertexte, `repr()` ohne Werte | `test_api_errors_contain_no_token`, `test_session_caches_and_refreshes_after_expiry` |
 
+## Bericht im Browser
+
+Entscheidung: [ADR 0009](adr/0009-bericht-mit-freigabe-im-browser.md). Die Seite läuft nur während `paperpilot run --browser`.
+
+| Zusage | Umsetzung | Geprüft in |
+|---|---|---|
+| Nur vom eigenen Rechner erreichbar | Server lauscht ausschließlich auf `127.0.0.1`, Port zufällig | `test_serve_until_approved` |
+| Fremde Seiten können nichts auslösen (CSRF) | Zufallstoken in Adresse und Formular, Origin-Prüfung | `test_get_needs_token_and_sets_security_headers`, `test_foreign_origin_is_rejected`, `test_wrong_token_and_unknown_path` |
+| Mailtext kann keinen Code ausführen (XSS) | `html.escape` für jeden Wert, CSP ohne Skripte | `test_mail_content_is_escaped`, `test_get_needs_token_and_sets_security_headers` |
+| Ohne Freigabe wird nichts geschrieben | Ausführen erst in `approve()`; Abbruch, Zeitablauf und Strg+C schreiben nichts | `test_invalid_form_writes_nothing`, `test_serve_times_out_without_writing`, `test_cli_browser_ctrl_c_writes_nothing` |
+| Genau das Gezeigte wird abgelegt | `FixedClassifier`, keine zweite KI-Anfrage; nur bekannte Kategorien; nur eine Freigabe | `test_correction_wins_and_is_marked`, `test_approve_only_once_and_cancel` |
+| Token nicht im Protokoll | Server protokolliert keine Adressen | `server.py` (`log_message`) |
+
 ## Meldung von Schwachstellen
 
 Bitte nicht als öffentliches Issue, sondern über die private Sicherheitsmeldung von GitHub („Report a vulnerability“ im Reiter *Security* des Repositorys).

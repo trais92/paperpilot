@@ -144,6 +144,12 @@ Google Drive als Ablageziel ([ADR 0008](adr/0008-google-drive-adapter.md)), nur 
 
 `composition.make_store()` wählt anhand von `[storage]` bzw. `--storage` zwischen `LocalStore` und `DriveStore`.
 
+### `web/`
+Bericht mit Freigabe als lokale Seite ([ADR 0009](adr/0009-bericht-mit-freigabe-im-browser.md)), nur Standardbibliothek, kein JavaScript.
+
+- **`review.py`**: `ReviewSession` hält Mails und Plan eines Trockenlaufs, rendert die Seite (eine Auswahlliste pro Mail) und führt bei `approve()` mit `classify.FixedClassifier` aus, also mit genau den gezeigten und korrigierten Kategorien. Ohne HTTP testbar.
+- **`server.py`**: `serve()` startet `ThreadingHTTPServer` auf `127.0.0.1:0`, öffnet den Browser und wartet auf Freigabe, Abbruch oder Zeitablauf. Token, Origin-Prüfung und CSP siehe [security.md](security.md#bericht-im-browser).
+
 ### `pipeline.py`
 `plan_mail()` entscheidet die Aktion pro Mail:
 
@@ -161,7 +167,7 @@ Google Drive als Ablageziel ([ADR 0008](adr/0008-google-drive-adapter.md)), nur 
 Siehe [evaluation.md](evaluation.md).
 
 ### `cli.py`
-`argparse` mit den Unterbefehlen `demo`, `run`, `eval`, `init`, `login`, `logout`. Demo- und Testdaten liegen als Paketdaten in `paperpilot_ops/data/` und funktionieren deshalb auch nach `pip install`.
+`argparse` mit den Unterbefehlen `demo`, `run`, `eval`, `init`, `login`, `logout`. `run --browser` übergibt den Trockenlauf an `web.serve()`. Demo- und Testdaten liegen als Paketdaten in `paperpilot_ops/data/` und funktionieren deshalb auch nach `pip install`.
 
 ## Designentscheidungen
 

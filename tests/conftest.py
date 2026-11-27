@@ -6,6 +6,14 @@ from paperpilot_ops.config import load_rules
 from paperpilot_ops.models import Attachment, Mail
 
 
+@pytest.fixture(autouse=True)
+def isolated_config(tmp_path_factory, monkeypatch):
+    """Kein Test liest oder schreibt die echten persönlichen Einstellungen."""
+    path = tmp_path_factory.mktemp("config")
+    monkeypatch.setenv("PAPERPILOT_CONFIG_DIR", str(path))
+    return path
+
+
 @pytest.fixture
 def rules():
     return load_rules()

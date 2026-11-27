@@ -42,10 +42,24 @@ class Mail:
 
 
 @dataclass(frozen=True)
+class Fields:
+    """Angaben aus Mail und Anhang, geprüft in `fields.py`. Leer heißt: nicht (sicher) erkannt."""
+
+    amount: str = ""  # '49.90 EUR'
+    document_date: str = ""  # Rechnungs- bzw. Belegdatum, 'JJJJ-MM-TT'
+    reference: str = ""  # Rechnungs-, Kunden- oder Vertragsnummer
+    due_date: str = ""  # Zahlungs- oder Antwortfrist, 'JJJJ-MM-TT'
+
+    def __bool__(self) -> bool:
+        return any((self.amount, self.document_date, self.reference, self.due_date))
+
+
+@dataclass(frozen=True)
 class Classification:
     label: str  # z. B. 'bewerbung/einladung', 'privat/versicherungen', 'werbung', 'unklar'
     confidence: float
     reason: str = ""
+    fields: Fields = field(default_factory=Fields)
 
     @property
     def group(self) -> str:
@@ -54,6 +68,16 @@ class Classification:
     @property
     def subtype(self) -> str:
         return self.label.split("/", 1)[1] if "/" in self.label else ""
+
+
+@dataclass(frozen=True)
+class Completion:
+    """Antwort eines Sprachmodells (Port `LanguageModel`)."""
+
+    text: str
+    provider: str  # welcher Anbieter tatsächlich geantwortet hat
+    input_tokens: int | None = None
+    output_tokens: int | None = None
 
 
 @dataclass(frozen=True)
@@ -78,8 +102,9 @@ class MailPlan:
 
     mail: Mail
     classification: Classification
-    action: str  # 'file' | 'ignore' | 'review' | 'duplicate'
+    action: str  # 'file' | 'ignore' | 'review' | 'duplicate' | 'skip' (Kategorie nicht gewählt)
     files: list[PlannedFile] = field(default_factory=list)
+    table: str = ""  # Übersichtstabelle, in die die Mail nach dem Ablegen eingetragen wird
     deadlines: list[Deadline] = field(default_factory=list)
     notify: bool = False
     company: str = ""

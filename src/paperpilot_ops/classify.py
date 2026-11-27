@@ -1,16 +1,18 @@
-"""Klassifizierer: regelbasiert (Standard, offline) und optional per LLM."""
+"""Regel-Klassifizierer: Stichwörter und Absender, erklärbar, offline.
+
+Seit ADR 0003 sortiert die KI (`ai/classifier.py`). Die Regeln dienen als Vorfilter für Werbung,
+als Vergleichswert in `paperpilot eval` und für die Demo ohne Schlüssel.
+"""
 
 from __future__ import annotations
 
-import json
-import os
-from typing import Any
+from collections.abc import Mapping
 
 from .config import Rules
 from .models import Classification, Mail
 from .ports import Classifier
 
-__all__ = ["UNCLEAR", "Classifier", "LLMClassifier", "RuleClassifier", "make_classifier"]
+__all__ = ["UNCLEAR", "Classifier", "FixedClassifier", "RuleClassifier"]
 
 UNCLEAR = "unklar"
 
@@ -68,73 +70,15 @@ class RuleClassifier:
         return Classification(best, conf, f"Score {best_s:g}, naechster {second_s:g}")
 
 
-class LLMClassifier:
-    """Optionaler Klassifizierer ueber die Claude API (strukturierte JSON-Ausgabe).
+class FixedClassifier:
+    """Gibt vorher ermittelte Klassifizierungen zurück, z. B. nach Korrektur im Browser-Bericht.
 
-    Braucht `pip install paperpilot-ops[llm]` und Zugangsdaten
-    (z. B. ANTHROPIC_API_KEY). Bei Fehlern oder Ablehnung: 'unklar' -> menschliche Pruefung.
+    So wird beim Ausführen nicht erneut eine KI gefragt, und Korrekturen des Menschen gelten genau.
+    Unbekannte Mails ergeben `unklar` (Regel 5).
     """
 
-    MODEL = os.environ.get("PAPERPILOT_MODEL", "claude-opus-5-5")
-
-    def __init__(self, rules: Rules, client: Any = None):
-        self.rules = rules
-        if client is None:
-            import anthropic  # optional dependency
-
-            client = anthropic.Anthropic()
-        self.client = client
-        labels = sorted(set(rules.labels) | {f"{g}/sonstiges" for g in rules.groups})
-        self.labels = labels
-        self.schema = {
-            "type": "object",
-            "properties": {
-                "label": {"type": "string", "enum": labels},
-                "confidence": {"type": "number"},
-                "reason": {"type": "string"},
-            },
-            "required": ["label", "confidence", "reason"],
-            "additionalProperties": False,
-        }
-
-    def _prompt(self, mail: Mail) -> str:
-        return (
-            "Ordne diese E-Mail genau einem Label zu. "
-            "'werbung' sind Newsletter, Rabattaktionen und automatische Job-Empfehlungen. "
-            "'bewerbung/*' nur fuer Korrespondenz zu einer echten, selbst eingereichten Bewerbung. "
-            "Wenn du unsicher bist, waehle 'unklar', dann prueft ein Mensch.\n\n"
-            f"Labels: {', '.join(self.labels)}\n\n"
-            f"Von: {mail.sender}\nBetreff: {mail.subject}\n\n{mail.body[:4000]}"
-        )
+    def __init__(self, results: Mapping[str, Classification]):
+        self._results = dict(results)
 
     def classify(self, mail: Mail) -> Classification:
-        try:
-            response = self.client.beta.messages.create(
-                model=self.MODEL,
-                max_tokens=1024,
-                betas=["server-side-fallback-2026-07-01"],
-                fallbacks="default",
-                output_config={
-                    "effort": "low",
-                    "format": {"type": "json_schema", "schema": self.schema},
-                },
-                messages=[{"role": "user", "content": self._prompt(mail)}],
-            )
-        except Exception as exc:  # Netzwerk, Auth, Rate-Limit: lieber Mensch fragen
-            return Classification(UNCLEAR, 0.0, f"LLM-Fehler: {type(exc).__name__}")
-        if response.stop_reason == "refusal":
-            return Classification(UNCLEAR, 0.0, "LLM hat abgelehnt")
-        text = next((b.text for b in response.content if b.type == "text"), "")
-        try:
-            data = json.loads(text)
-        except json.JSONDecodeError:
-            return Classification(UNCLEAR, 0.0, "LLM-Antwort kein JSON")
-        return Classification(data["label"], float(data["confidence"]), data.get("reason", ""))
-
-
-def make_classifier(name: str, rules: Rules) -> Classifier:
-    if name == "rules":
-        return RuleClassifier(rules)
-    if name == "llm":
-        return LLMClassifier(rules)
-    raise ValueError(f"Unbekannter Klassifizierer: {name}")
+        return self._results.get(mail.id, Classification(UNCLEAR, 0.0, "nicht im freigegebenen Plan"))

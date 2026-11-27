@@ -8,13 +8,21 @@ Eine Python-CLI, die Mails klassifiziert, Mails und Anhänge nach Namenskonventi
 
 Ziel (siehe [docs/roadmap.md](docs/roadmap.md)): Eine fest eingebaute KI erkennt Kategorie und Angaben jeder Mail, abgelegt wird in einer Ordnerstruktur aus wählbaren Kategorien, lokal oder in Google Drive, bedienbar ohne Terminal über eine lokale Seite im Browser.
 
-## Stand (v0.1.0 + Phase 0, 26.11.2026)
+## Stand (v0.1.0 + Roadmap 0–8, 27.11.2026)
 
 - Kern fertig und getestet: Quellen (JSON, IMAP lesend), Regel-Klassifizierer, Namenskonvention, Fristen + iCalendar, Ablage mit Duplikat-Index und Lauf-Stand, Tracker, Bericht, Evaluation, CLI (`demo`, `run`, `eval`, `init`).
 - Phase 0 (Architektur-Grundlage) erledigt: Ports in `ports.py` (`MailSource`, `Classifier`, `StorageTarget`, `CredentialStore`), `MemoryStore`, `EnvCredentialStore`, Vertragstest für Ablageziele, ADR 0001 bis 0006.
-- 40 Tests grün, Abdeckung 92 %, `ruff` und `mypy --strict` sauber. CI auf Python 3.11 bis 3.13 prüft zusätzlich Format, Abdeckung ≥ 85 %, Demo-Lauf und `eval --min-accuracy 0.85`.
+- Roadmap 1 erledigt: Zugangsdaten im Schlüsselbund (`paperpilot login`/`logout`, `KeyringCredentialStore`), Sicherheitskonzept in [docs/security.md](docs/security.md).
+- 282 Tests grün, Abdeckung 97 %, `ruff` und `mypy --strict` sauber. CI auf Python 3.11 bis 3.13 prüft zusätzlich Format, Abdeckung ≥ 85 %, Demo-Lauf und `eval --min-accuracy 0.85`.
 - Evaluation Regeln: 90,4 % Label, 94,2 % Gruppe, 11,5 % `unklar` auf 52 Mails. Siehe [docs/evaluation.md](docs/evaluation.md).
-- **Nicht verifiziert:** `LLMClassifier` gegen die echte API. Getestet nur mit einem Fake-Client (`tests/test_classify.py`). Der Aufruf nutzt `client.beta.messages.create` mit `output_config.format` (JSON-Schema), `effort: "low"`, Modell `claude-opus-5-5` (über `PAPERPILOT_MODEL` änderbar) sowie `betas=["server-side-fallback-2026-07-01"]` und `fallbacks="default"`. Beim ersten echten Lauf prüfen, ob die installierte `anthropic`-Version diese Parameter akzeptiert. Sonst `fallbacks`/`betas` entfernen und `client.messages.create` nutzen.
+- Roadmap 2 erledigt: KI-Schicht in `ai/` (Port `LanguageModel`, Groq voreingestellt und einziger Gratis-Anbieter, mit `openai/gpt-oss-120b` als Reserve-Modell bei erschöpftem Kontingent ([ADR 0012](docs/adr/0012-zweites-groq-modell-als-reserve.md)), Claude optional mit eigenem Schlüssel und überall als kostenpflichtig gekennzeichnet, `PAID_PROVIDERS` in `ai/providers.py`), Vorfilter, strenge Antwortprüfung, `paperpilot login --ai`. Standard Groq von Kai bestätigt ([ADR 0007](docs/adr/0007-ki-schicht-mit-austauschbaren-modellen.md)).
+- Roadmap 3 erledigt: `enabled` an Kategorien/Gruppen (Aktion `skip`), Übersichtstabelle pro Zielordner über `StorageTarget.append_rows`.
+- Roadmap 7 erledigt: Google Drive als Ablageziel (`drive/`, `DriveStore`, `paperpilot login --google`, `[storage]`), [ADR 0008](docs/adr/0008-google-drive-adapter.md). Nicht gegen echtes Drive getestet; braucht einen OAuth-Client (Desktop-App), siehe `docs/google-drive.md`.
+- Roadmap 6 erledigt (Kategorien): `paperpilot run --browser` zeigt den Plan als lokale Seite (`web/`), Korrektur pro Mail, „Freigeben“ führt mit `FixedClassifier` genau das Gezeigte aus, [ADR 0009](docs/adr/0009-bericht-mit-freigabe-im-browser.md).
+- Roadmap 4 erledigt: KI liest Betrag, Belegdatum, Nummer, Frist aus Mail und PDF (`fields.py`, `pdftext.py`, Extra `[pdf]`), Scans gehen in den Eingang, Angaben in Übersicht, Bericht und Browser-Korrektur, [ADR 0011](docs/adr/0011-angaben-aus-mail-und-pdf.md). Angaben nie in die abgelegte Datei schreiben (Hash, Duplikat-Schutz).
+- Roadmap 5 erledigt bis auf KI-Zahlen: `data/testset.jsonl` (208 Mails, `tools/make_testset.py`, nie von Hand ändern), `eval --testset angaben --split --json --provider`. Regeln: 76,4 % dev, 39,1 % holdout. Optimieren nur auf `dev`.
+- Roadmap 8 erledigt (ohne Doppelklick-Start, der kommt mit 9): `paperpilot setup` (`web/setup.py`), Wahlen in `settings.toml` über `settings.py`, [ADR 0010](docs/adr/0010-persoenliche-einstellungen.md).
+- **Nicht verifiziert:** alle KI-Adapter gegen die echten Schnittstellen (nur Attrappen in `tests/test_ai_models.py`). Beim ersten echten Lauf prüfen: Groq mit `response_format: json_object` und `openai/gpt-oss-20b`; Claude mit `client.beta.messages.create`, `betas=["server-side-fallback-2026-07-01"]`, `fallbacks="default"`. Notfalls `fallbacks`/`betas` in `ai/anthropic.py` entfernen. Nur Anbieter ohne Kreditkarte/Abrechnung werden voreingestellt (Kai, 27.11.2026); geprüfte Kandidaten in `docs/ai-providers.md`.
 - Paketname `paperpilot-ops` (PyPI-Name `paperpilot` ist vergeben), Importpaket `paperpilot_ops`, Befehl `paperpilot`. Repo: `trais92/paperpilot`.
 
 ## Nicht verhandelbare Regeln
@@ -48,28 +56,32 @@ Bei Regeländerungen (`default_rules.toml`) immer `paperpilot eval` vorher und n
 
 | Datei | Inhalt | Achtung |
 |---|---|---|
-| `src/paperpilot_ops/ports.py` | Protokolle `MailSource`, `Classifier`, `StorageTarget`, `CredentialStore` | Verträge stehen in den Docstrings, Änderungen brauchen ein ADR |
-| `src/paperpilot_ops/credentials.py` | `EnvCredentialStore`, fest vereinbarte Schlüssel `KEYS` | Neue Zugangsdaten zuerst in `KEYS` eintragen |
+| `src/paperpilot_ops/ports.py` | Protokolle `MailSource`, `Classifier`, `LanguageModel`, `StorageTarget`, `CredentialStore`, `MutableCredentialStore` | Verträge stehen in den Docstrings, Änderungen brauchen ein ADR |
+| `src/paperpilot_ops/credentials.py` | `EnvCredentialStore`, `KeyringCredentialStore`, `ChainedCredentialStore`, fest vereinbarte Schlüssel `KEYS` | Neue Zugangsdaten zuerst in `KEYS` eintragen; Fehlermeldungen nie mit Wert |
 | `src/paperpilot_ops/cli.py` | Argumente, Unterbefehle, Verdrahtung der Adapter | Demo-/Testdaten über `importlib.resources` |
 | `src/paperpilot_ops/pipeline.py` | `plan_mail()` (rein), `run()` (führt aus), `render_report()` | Planen ohne Seiteneffekte halten |
-| `src/paperpilot_ops/classify.py` | `RuleClassifier`, `LLMClassifier`, `make_classifier()` | Neue Klassifizierer: Port `Classifier`, in `make_classifier` und CLI-`choices` eintragen |
+| `src/paperpilot_ops/classify.py` | `RuleClassifier` (Vorfilter, Vergleichswert, Demo), `FixedClassifier` (freigegebener Plan) | |
+| `src/paperpilot_ops/ai/` | `AIClassifier`, `PrefilteredClassifier`, Adapter `OpenAICompatibleModel`/`AnthropicModel`/`FallbackModel`, `providers.py` | Antworten nie ungeprüft übernehmen; neuer Anbieter: Eintrag in `providers.py`, `AI_PROVIDERS` in `config.py`, Schlüssel in `KEYS` |
+| `src/paperpilot_ops/fields.py`, `pdftext.py` | Prüfung der Angaben (`Fields`), PDF-Text über optionales `pypdf` | Ungültiges bleibt leer, Meldungen ohne Wert; `None` (unbekannt) ≠ `""` (Scan) |
+| `src/paperpilot_ops/settings.py` | `settings.toml` laden/speichern, `apply_settings()` | Nie Zugangsdaten hier; Tests setzen `PAPERPILOT_CONFIG_DIR` (conftest) |
+| `src/paperpilot_ops/web/` | `page.py` (Vertrag `LocalPage`), `review.py` (`ReviewSession`), `setup.py` (`SetupSession`), `server.py` (`serve()`, 127.0.0.1, Token, CSP) | Kein JavaScript; jeder Mailwert durch `html.escape`; Ausführen nur in `approve()` |
+| `src/paperpilot_ops/composition.py` | `make_classifier()`, einziger Ort, der Ports mit Adaptern verbindet | Neue Klassifizierer hier und in `CLASSIFIERS` eintragen |
 | `src/paperpilot_ops/config.py` | TOML laden, `Rules.folder_for()` | Unbekannte Gruppe ist ein Fehler beim Laden |
 | `src/paperpilot_ops/default_rules.toml` | Standardregeln | Paketdaten, in `pyproject.toml` gelistet |
 | `src/paperpilot_ops/deadlines.py` | Fristen, `.ics` | Satz-Split darf Datumspunkte nicht trennen |
-| `src/paperpilot_ops/store.py` | `LocalStore`, `MemoryStore`, Tracker, Fristen | Übersichten nur über `read_text`/`write_text`, nie über Pfade; Metadaten in `.paperpilot/` |
+| `src/paperpilot_ops/store.py` | `LocalStore`, `MemoryStore`, Übersichtstabellen, Tracker, Fristen | Tabellen nur über `append_rows`, Tracker/Fristen über `read_text`/`write_text`, nie über Pfade; Metadaten in `.paperpilot/` |
+| `src/paperpilot_ops/drive/` | `oauth.py` (PKCE, Rückruf 127.0.0.1), `api.py` (`DriveApi`), `store.py` (`DriveStore`) | Nur Scope `drive.file`; nie eine Lösch-Methode einbauen; Tests gegen `tests/fake_drive.py` |
 | `src/paperpilot_ops/naming.py` | Dateinamen, Firmenname | Ändert sich die Konvention, ändern sich Hashes nicht (Hash über Inhalt) |
-| `src/paperpilot_ops/evaluate.py` | Metriken, Bericht | |
+| `src/paperpilot_ops/evaluate.py` | Metriken (Labels, Angaben, Verwechslungen), Splits, JSON | |
+| `tools/make_testset.py` | Erzeugt `data/testset.jsonl` deterministisch | Nach Änderung neu erzeugen; Test prüft Übereinstimmung |
 | `src/paperpilot_ops/data/` | `demo_inbox.json`, `eval_set.jsonl` | Nur erfundene Daten |
 
 ## Nächste Schritte (priorisiert)
 
-Vollständig mit Fertig-Kriterien in [docs/roadmap.md](docs/roadmap.md). Als Nächstes Phase 1:
+Vollständig mit Fertig-Kriterien in [docs/roadmap.md](docs/roadmap.md). Als Nächstes:
 
-1. **Zugangsdaten im Schlüsselbund** ([ADR 0004](docs/adr/0004-zugangsdaten-im-schluesselbund.md)): Adapter `KeyringCredentialStore` als optionales Extra `[keyring]`, Speichern nach Abfrage anbieten, Befehl zum Löschen, Tests dass nichts in Dateien oder Logs landet.
-2. **KI-Anbindung** ([ADR 0003](docs/adr/0003-ki-fest-eingebaut.md)): OpenAI-kompatibler Client mit der Standardbibliothek (`urllib`) für Mistral (Standard) und Groq (Reserve), Claude über das vorhandene Extra. Antworten gegen erlaubte Labels prüfen. Kontingente und Datenregeln vorher in den offiziellen Unterlagen prüfen.
-3. **Wählbare Kategorien mit Übersichtstabelle** ([ADR 0005](docs/adr/0005-ablage-ordnerstruktur-lokal-oder-drive.md)).
-4. **Felder aus Mail und PDF auslesen.**
-5. **Neues Testset mit Feldern und Dev/Holdout**, Messung je Anbieter.
+1. **KI messen** (Rest von Roadmap 5): mit echtem Groq-Schlüssel `eval --classifier ai --provider groq --testset angaben` auf dev, dann einmal auf holdout; dabei die KI-Adapter erstmals gegen die echten Schnittstellen prüfen und die Zahlen in `docs/evaluation.md` eintragen.
+2. **Programm für Windows und macOS** (Roadmap 9), das beim ersten Start `paperpilot setup` öffnet.
 
 ## Bekannte Schwächen
 

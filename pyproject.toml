@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "paperpilot-ops"
 version = "0.1.0"
-description = "Mail-Triage und Dokumentenablage nach Regeln, mit Fristen-Erkennung, Duplikat-Check, Evaluation und Human-in-the-loop."
+description = "Mail-Triage und Dokumentenablage mit KI: austauschbare Anbieter, Vorfilter, Fristen-Erkennung, Duplikat-Check, Evaluation und Human-in-the-loop."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -13,7 +13,9 @@ dependencies = []
 
 [project.optional-dependencies]
 llm = ["anthropic>=2.0"]
-dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.6", "mypy>=1.10"]
+keyring = ["keyring>=25"]
+pdf = ["pypdf>=5"]
+dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.6", "mypy>=1.10", "pypdf>=5"]
 
 [project.scripts]
 paperpilot = "paperpilot_ops.cli:main"
@@ -34,8 +36,13 @@ strict = true
 files = ["src"]
 
 [[tool.mypy.overrides]]
-module = ["anthropic", "anthropic.*"]
+module = ["anthropic", "anthropic.*", "keyring", "keyring.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["pypdf", "pypdf.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
 
 [tool.coverage.report]
 show_missing = true
@@ -47,3 +54,7 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# Mail-Vorlagen sind Fließtext; Zeilenumbrüche darin würden die Vorlagen schwerer lesbar machen
+"tools/make_testset.py" = ["E501"]

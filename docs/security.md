@@ -1,0 +1,101 @@
+# Sicherheitskonzept
+
+PaperPilot arbeitet mit dem Postfach, mit privaten Dokumenten und mit Zugangsdaten. Dieses Dokument beschreibt, was geschützt wird, gegen wen, und wo im Code das passiert. Jede Zusage hier ist durch einen Test abgesichert; die Spalte „Geprüft in“ nennt ihn.
+
+## Schutzgüter
+
+| Was | Warum schützenswert |
+|---|---|
+| Postfach | Darf nie verändert werden: keine Mail senden, verschieben, löschen oder als gelesen markieren |
+| Zugangsdaten (App-Passwort, KI-Schlüssel, Google-Refresh-Token) | Voller Zugriff auf Postfach bzw. Konten |
+| Abgelegte Dokumente | Private Inhalte; ein Überschreiben wäre Datenverlust |
+| Mail-Inhalte unterwegs | Gehen nur an Dienste, die der Mensch ausgewählt hat |
+
+## Grundsätze
+
+1. **Nur lesen, wo gelesen wird.** IMAP mit `EXAMINE` (`select(readonly=True)`) und `BODY.PEEK[]`.
+2. **Nie überschreiben, nie löschen.** Gilt für jedes Ablageziel, geprüft im Vertragstest.
+3. **Erst planen, dann nach Freigabe ausführen.** Ohne `--apply` wird nichts geschrieben.
+4. **Zugangsdaten nur im Schlüsselbund.** Siehe unten.
+5. **Kein Paket ohne Not.** Der Kern hat keine Laufzeit-Abhängigkeiten; jedes Zusatzpaket ist ein optionales Extra und wird erst beim Gebrauch geladen.
+
+## Zugangsdaten
+
+Entscheidung und Alternativen: [ADR 0004](adr/0004-zugangsdaten-im-schluesselbund.md).
+
+| Zusage | Umsetzung | Geprüft in |
+|---|---|---|
+| Dauerhaft nur im Schlüsselbund des Betriebssystems | `KeyringCredentialStore`, Dienstname `paperpilot` | `test_keyring_roundtrip_under_own_service_name` |
+| `paperpilot login` legt keine Datei an | Werte gehen direkt in den Schlüsselbund | `test_login_stores_in_keyring_and_nowhere_else` |
+| Werte erscheinen nie in Ausgaben | `login --status` zeigt nur „gespeichert“/„fehlt“ | `test_status_shows_presence_but_never_values` |
+| Werte erscheinen nie in Fehlermeldungen | Fehler des Betriebssystems werden durch eine eigene Meldung ersetzt, ohne den Originaltext anzuhängen (`from None`) | `test_backend_errors_never_contain_the_secret`, `test_failed_check_stores_nothing` |
+| Werte erscheinen nie in `repr()` | eigenes `__repr__` für alle Adapter und `ImapSource` | `test_repr_never_shows_values` |
+| Falsche Zugangsdaten werden nicht gespeichert | Probe-Anmeldung vor dem Speichern | `test_failed_check_stores_nothing` |
+| Nur bekannte Schlüssel | `KEYS`; alles andere ist `KeyError` | `test_unknown_key_is_a_programming_error` |
+| Löschen ist jederzeit möglich | `paperpilot logout` | `test_logout_deletes_everything` |
+
+Reihenfolge beim Lesen: erst Umgebungsvariablen, dann Schlüsselbund. So können Server und CI ohne Schlüsselbund arbeiten, und ein Mensch kann einen gespeicherten Wert für einen Lauf bewusst übersteuern. Was fehlt, fragt der Lauf ab und vergisst es danach wieder.
+
+Grenzen: Wer am entsperrten Benutzerkonto sitzt, kann den Schlüsselbund lesen. Das ist bei jedem Programm so, das ohne Passwortabfrage laufen soll, und der Grund, warum PaperPilot nur ein App-Passwort verlangt, das sich beim Mailanbieter einzeln widerrufen lässt.
+
+## KI-Anbieter
+
+Entscheidungen: [ADR 0003](adr/0003-ki-fest-eingebaut.md), [ADR 0007](adr/0007-ki-schicht-mit-austauschbaren-modellen.md). Welche Anbieter, welche Datenregeln: [ai-providers.md](ai-providers.md).
+
+| Zusage | Umsetzung | Geprüft in |
+|---|---|---|
+| Werbung geht nicht an die KI | Vorfilter vor jedem KI-Aufruf | `test_prefilter_keeps_advertising_away_from_ai` |
+| Mailtext höchstens 4000 Zeichen; von Anhängen nur der Text von PDFs (höchstens 3000 Zeichen), abschaltbar mit `[ai] read_pdfs = false` | `AIClassifier.prompt()`, `composition.make_classifier()` | `test_long_bodies_are_cut_and_only_pdf_text_is_sent`, `test_read_pdfs_false_keeps_attachments_local` |
+| Gescannte PDFs werden nicht geraten | PDF ohne Text: `unklar` ohne KI-Anfrage | `test_scanned_pdf_goes_to_human_without_ai_call` |
+| Ausgelesene Angaben sind geprüft | Betrag, Daten, Nummer einzeln geprüft, Ungültiges verworfen, gleiche Prüfung für Korrekturen | `test_invalid_ai_field_is_dropped_but_category_stays`, `test_review_invalid_field_writes_nothing` |
+| Eine Mail kann der KI keine Kategorie aufzwingen, die es nicht gibt | Antwort muss ein Label aus der erlaubten Liste sein, sonst `unklar` | `test_invalid_answers_become_unclear` |
+| Anweisungen in der Mail werden als Inhalt behandelt | Systemprompt sagt es ausdrücklich; die Begrenzer `<<<MAIL`/`MAIL>>>` werden aus dem Mailtext entfernt, damit sie sich nicht fälschen lassen | `test_prompt_lists_categories_with_descriptions_and_delimits_mail` |
+| Ausfall heißt Mensch, nicht Raten | Jede Störung wird `unklar`; kein Rückfall auf die Regeln | `test_provider_failure_becomes_unclear_not_rules` |
+| Dieselbe Mail geht nicht unnötig an einen zweiten Anbieter | Reserve nur bei Störung, nicht bei falscher Antwort | `test_fallback_does_not_ask_reserve_after_an_answer` |
+| Schlüssel nie in Meldungen oder `repr()` | eigene Meldungen, `__repr__` ohne Schlüssel, auch für die HTTP-Anfrage | `test_contract_key_never_in_repr`, `test_openai_http_errors` |
+| Nur verschlüsselte Verbindungen | `OpenAICompatibleModel` lehnt andere Adressen als `https://` ab | `test_openai_only_https` |
+
+Grenze: Eine Mail kann die KI zu einer falschen, aber erlaubten Kategorie verleiten. Deshalb bleibt der Trockenlauf Standard und jede Ablage nachvollziehbar (Begründung im Bericht).
+
+## Google Drive
+
+Entscheidung: [ADR 0008](adr/0008-google-drive-adapter.md). Einrichtung: [google-drive.md](google-drive.md).
+
+| Zusage | Umsetzung | Geprüft in |
+|---|---|---|
+| Nur Zugriff auf selbst angelegte Dateien | einziger Scope `drive.file` | `test_authorization_url_requests_only_drive_file` |
+| Kein Löschen in Drive | `DriveApi` hat keinen Lösch- oder Papierkorb-Aufruf | `test_api_has_no_delete_or_trash` |
+| Nie überschreiben | `DriveStore` besteht den Vertragstest der Ablageziele | `tests/test_storage_contract.py` |
+| Abgefangener Code ist wertlos, fremde Rückrufe werden abgewiesen | PKCE (S256) und `state` | `test_pkce_challenge_is_s256_of_verifier`, `test_receive_code_rejects_wrong_state_and_denial` |
+| Rückruf nur lokal erreichbar | Server lauscht ausschließlich auf `127.0.0.1` | `test_receive_code_runs_local_callback_server` |
+| Tokens nur im Schlüsselbund bzw. Arbeitsspeicher | Refresh-Token im Schlüsselbund, Zugriffstoken nie gespeichert | `test_login_google_stores_token_in_keyring` |
+| Tokens nie in Meldungen | eigene Fehlertexte, `repr()` ohne Werte | `test_api_errors_contain_no_token`, `test_session_caches_and_refreshes_after_expiry` |
+
+## Bericht im Browser
+
+Entscheidung: [ADR 0009](adr/0009-bericht-mit-freigabe-im-browser.md). Die Seite läuft nur während `paperpilot run --browser`.
+
+| Zusage | Umsetzung | Geprüft in |
+|---|---|---|
+| Nur vom eigenen Rechner erreichbar | Server lauscht ausschließlich auf `127.0.0.1`, Port zufällig | `test_serve_until_approved` |
+| Fremde Seiten können nichts auslösen (CSRF) | Zufallstoken in Adresse und Formular, Origin-Prüfung | `test_get_needs_token_and_sets_security_headers`, `test_foreign_origin_is_rejected`, `test_wrong_token_and_unknown_path` |
+| Mailtext kann keinen Code ausführen (XSS) | `html.escape` für jeden Wert, CSP ohne Skripte | `test_mail_content_is_escaped`, `test_get_needs_token_and_sets_security_headers` |
+| Ohne Freigabe wird nichts geschrieben | Ausführen erst in `approve()`; Abbruch, Zeitablauf und Strg+C schreiben nichts | `test_invalid_form_writes_nothing`, `test_serve_times_out_without_writing`, `test_cli_browser_ctrl_c_writes_nothing` |
+| Genau das Gezeigte wird abgelegt | `FixedClassifier`, keine zweite KI-Anfrage; nur bekannte Kategorien; nur eine Freigabe | `test_correction_wins_and_is_marked`, `test_approve_only_once_and_cancel` |
+| Token nicht im Protokoll | Server protokolliert keine Adressen | `server.py` (`log_message`) |
+
+### Einrichtungsassistent
+
+Derselbe Server mit denselben Schutzmaßnahmen ([ADR 0010](adr/0010-persoenliche-einstellungen.md)).
+
+| Zusage | Umsetzung | Geprüft in |
+|---|---|---|
+| Passwörter und Schlüssel nur im Schlüsselbund | `SetupSession` schreibt sie über `MutableCredentialStore`; `settings.toml` kennt keine Zugangsdaten | `test_mail_is_checked_then_stored_and_never_shown`, `test_roundtrip_with_special_characters` |
+| Gespeicherte Geheimnisse werden nie angezeigt | Felder vom Typ `password` sind immer leer, Status nur „gespeichert“/„fehlt“ | `test_ai_key_is_stored_and_never_shown`, `test_google_connect_stores_tokens` |
+| Falsches Postfach-Passwort wird nicht gespeichert | Probe-Anmeldung (nur lesend) vor dem Speichern | `test_failed_imap_check_stores_nothing_and_hides_server_text` |
+| Fehlermeldungen ohne Werte | Serverantworten nur als Fehlertyp, Schlüsselbund-Fehler ohne Wert | `test_failed_imap_check_stores_nothing_and_hides_server_text`, `test_broken_keyring_message_has_no_value`, `test_google_errors` |
+| Fremde Seiten können nichts speichern | Token und Origin-Prüfung wie beim Bericht | `test_token_and_unknown_action`, `test_serve_setup_over_http` |
+
+## Meldung von Schwachstellen
+
+Bitte nicht als öffentliches Issue, sondern über die private Sicherheitsmeldung von GitHub („Report a vulnerability“ im Reiter *Security* des Repositorys).

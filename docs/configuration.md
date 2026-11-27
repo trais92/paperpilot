@@ -55,6 +55,7 @@ Stichwörter werden kleingeschrieben verglichen und als Teilstring gesucht (`"te
 | `provider` | String | `"groq"` | Anbieter, der zuerst gefragt wird: `groq` (kostenlos) oder `claude` (eigener Schlüssel) |
 | `fallback` | Liste | `[]` | Reserve, der Reihe nach. Anbieter ohne Schlüssel werden übersprungen |
 | `min_confidence` | Zahl 0–1 | `0.6` | Darunter wird `unklar` vergeben |
+| `read_pdfs` | Bool | `true` | Text von PDF-Anhängen mitsenden (braucht `pip install ".[pdf]"`); `false` lässt Anhänge auf dem Rechner |
 | `[ai.models]` | Tabelle | – | Optional ein anderes Modell je Anbieter, z. B. `groq = "openai/gpt-oss-120b"` |
 
 Unbekannte Anbieter oder eine Sicherheit außerhalb von 0 bis 1 sind ein Fehler beim Laden. Anbieter und Einrichtung: [ai-providers.md](ai-providers.md).
@@ -99,7 +100,7 @@ Jeder Zielordner bekommt eine Übersichtstabelle, in die jede abgelegte Mail ein
 | `Bewerbungen/{company}` | `Bewerbungen/Übersicht.csv` |
 | `00 Eingang` (unklare Mails) | `00 Eingang/Übersicht.csv` |
 
-Spalten: `Datum`, `Absender`, `Betreff`, `Kategorie`, `Frist`, `Dateien`, `Begründung`, `Mail-ID`. Lokal ist das eine CSV-Datei mit Semikolon und UTF-8 mit BOM, die Excel und LibreOffice per Doppelklick richtig öffnen. Zeilen werden nur angehängt, nie geändert oder gelöscht. Kommen später Spalten hinzu (z. B. ausgelesene Beträge), werden sie hinten angefügt.
+Spalten: `Datum`, `Absender`, `Betreff`, `Kategorie`, `Betrag`, `Belegdatum`, `Nummer`, `Frist`, `Dateien`, `Begründung`, `Mail-ID`. Betrag, Belegdatum und Nummer liest die KI aus Mail und PDF-Anhang ([ADR 0011](adr/0011-angaben-aus-mail-und-pdf.md)); beim Regel-Klassifizierer bleiben sie leer. Lokal ist das eine CSV-Datei mit Semikolon und UTF-8 mit BOM, die Excel und LibreOffice per Doppelklick richtig öffnen. Zeilen werden nur angehängt, nie geändert oder gelöscht. Kommen Spalten hinzu, werden sie in bestehenden Tabellen hinten angefügt.
 
 ## Scoring (Regel-Klassifizierer)
 

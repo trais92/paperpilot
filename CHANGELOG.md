@@ -2,6 +2,13 @@
 
 ## Unveröffentlicht
 
+### Angaben aus Mail und PDF (Roadmap 4)
+
+- Die KI liest Betrag, Belegdatum, Rechnungs-/Kundennummer und Frist aus, auch aus dem Text von PDF-Anhängen (optionales Extra `[pdf]`, `[ai] read_pdfs`).
+- Jede Angabe wird einzeln geprüft (`fields.py`); Ungültiges bleibt leer und wird in der Begründung genannt. PDFs ohne Text (Scans) gehen ohne KI-Anfrage in den Eingang.
+- Übersichten bekommen die Spalten `Betrag`, `Belegdatum`, `Nummer`; die Frist laut KI kommt in den Kalender; der Bericht zeigt einen Abschnitt „ANGABEN“.
+- Im Browser-Bericht lassen sich die Angaben vor der Freigabe korrigieren. ADR 0011.
+
 ### Einrichtungsassistent im Browser (Roadmap 8)
 
 - `paperpilot setup`: lokale Seite für Postfach (mit Probe-Anmeldung), Groq-Schlüssel, Kategorien, Ablageziel (lokal oder Google Drive inkl. Anmeldung) und Zeitplan-Befehle; danach auf Wunsch direkt der erste Lauf zur Freigabe.

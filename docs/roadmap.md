@@ -17,14 +17,14 @@ Jeder Schritt ist ein eigener Pull Request mit Tests, Doku und, wo nötig, einem
 | 1 | Zugangsdaten im Schlüsselbund ([ADR 0004](adr/0004-zugangsdaten-im-schluesselbund.md)) | App-Passwort einmal eingeben, der nächste Lauf fragt nicht; Befehl zum Löschen | erledigt |
 | 2 | KI-Anbindung: Groq (gratis), Claude optional ([ADR 0003](adr/0003-ki-fest-eingebaut.md), [0007](adr/0007-ki-schicht-mit-austauschbaren-modellen.md)) | Eine Mail ergibt Kategorie oder `unklar`; Gratis-Anbieter ohne Zusatzpaket; Antworten werden gegen erlaubte Kategorien geprüft | erledigt, Messung mit echtem Schlüssel offen |
 | 3 | Wählbare Kategorien, auch eigene, mit Ordnerstruktur und Übersichtstabelle ([ADR 0005](adr/0005-ablage-ordnerstruktur-lokal-oder-drive.md)) | Demo-Lauf legt nur die gewählten Ordner an und füllt deren Übersicht | erledigt |
-| 4 | KI liest Felder aus Mail und PDF-Anhang aus (Betrag, Datum, Nummer, Fristen) | Felder landen in der Übersicht; gescannte PDFs ohne Text gehen in den Eingang |
+| 4 | KI liest Felder aus Mail und PDF-Anhang aus (Betrag, Datum, Nummer, Fristen) | Felder landen in der Übersicht; gescannte PDFs ohne Text gehen in den Eingang | erledigt ([ADR 0011](adr/0011-angaben-aus-mail-und-pdf.md)), Messung mit 5 |
 | 5 | Neues Testset (≥ 200 erfundene Mails mit Feldern, `split: dev\|holdout`), Messung von Kategorie und Feldern je Anbieter, `eval --json`, Konfusionsmatrix | Zahlen für Regeln, Groq und Claude in `docs/evaluation.md` |
 
 ## Phase 2: Bedienung ohne Terminal
 
 | # | Vorhaben | Fertig, wenn | Stand |
 |---|---|---|---|
-| 6 | Bericht mit Freigabe als lokale Seite im Browser | „Freigeben“ ersetzt `--apply`; Angaben lassen sich vorher korrigieren | Kategorien erledigt (`run --browser`, [ADR 0009](adr/0009-bericht-mit-freigabe-im-browser.md)), Felder mit 4 |
+| 6 | Bericht mit Freigabe als lokale Seite im Browser | „Freigeben“ ersetzt `--apply`; Angaben lassen sich vorher korrigieren | erledigt (`run --browser`, [ADR 0009](adr/0009-bericht-mit-freigabe-im-browser.md)) |
 | 7 | Google Drive als Ablageziel mit direkter Anmeldung, Übersicht als Google-Tabelle ([ADR 0008](adr/0008-google-drive-adapter.md)) | Derselbe Lauf legt in Drive dieselbe Struktur an wie lokal; Vertragstest grün | erledigt, echter Test offen |
 | 8 | Einrichtungsassistent im Browser: Postfach, Kategorien, KI-Schlüssel, Ablageziel, Zeitplan | Neuer Rechner bis zum ersten Lauf ohne Terminal | Assistent erledigt (`paperpilot setup`, [ADR 0010](adr/0010-persoenliche-einstellungen.md)); Start per Doppelklick mit 9 |
 | 9 | Programm für Windows und macOS, Veröffentlichung auf PyPI (`paperpilot-ops`) | Download, Doppelklick, Assistent öffnet sich; Release per GitHub Action |

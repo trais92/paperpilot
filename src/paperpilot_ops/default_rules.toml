@@ -25,6 +25,9 @@ provider = "groq"
 fallback = []
 # Ist sich die KI weniger sicher als dieser Wert, landet die Mail im Eingang zur Prüfung.
 min_confidence = 0.6
+# Text aus PDF-Anhängen mitsenden, damit die KI Betrag, Nummer und Frist auch aus der Rechnung
+# liest (höchstens 3000 Zeichen, braucht pip install ".[pdf]"). false: Anhänge bleiben auf dem Rechner.
+read_pdfs = true
 # Optional ein anderes Modell je Anbieter:
 # [ai.models]
 # groq = "openai/gpt-oss-20b"

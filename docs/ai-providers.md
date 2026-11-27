@@ -44,7 +44,7 @@ Ohne Schlüsselbund: Umgebungsvariable `PAPERPILOT_GROQ_API_KEY` (bzw. `PAPERPIL
 
 ## Was gesendet wird
 
-Pro Mail ein Aufruf mit der Liste der erlaubten Kategorien samt Beschreibung, Absender, Betreff und höchstens 4000 Zeichen des Textes. Anhänge werden nicht gesendet. Werbung, die der Vorfilter erkennt, und Duplikate gehen gar nicht erst an die KI. Mehr dazu im [Sicherheitskonzept](security.md#ki-anbieter).
+Pro Mail ein Aufruf mit der Liste der erlaubten Kategorien samt Beschreibung, Absender, Betreff, höchstens 4000 Zeichen des Textes und, falls `pypdf` installiert ist (`pip install ".[pdf]"`), der Text von PDF-Anhängen (höchstens 5 Seiten, 3000 Zeichen zusammen). Andere Anhänge werden nie gesendet, und `[ai] read_pdfs = false` lässt auch PDFs auf dem Rechner. Ein PDF ohne lesbaren Text (Scan) geht nicht an die KI, sondern in den Eingang ([ADR 0011](adr/0011-angaben-aus-mail-und-pdf.md)). Werbung, die der Vorfilter erkennt, und Duplikate gehen gar nicht erst an die KI. Mehr dazu im [Sicherheitskonzept](security.md#ki-anbieter).
 
 ## Kontingente
 

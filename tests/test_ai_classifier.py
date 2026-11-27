@@ -34,12 +34,23 @@ def test_prompt_lists_categories_with_descriptions_and_delimits_mail(rules, make
     assert set(schema["properties"]["label"]["enum"]) == set(clf.labels)
 
 
-def test_long_bodies_are_cut_and_attachments_never_sent(rules, make_mail):
+def test_long_bodies_are_cut_and_only_pdf_text_is_sent(rules, make_mail):
     model = ScriptedModel("groq", ok())
-    mail = make_mail("Lang", "x" * 10_000, attachments=[("geheim.pdf", b"%PDF vertraulich")])
-    AIClassifier(rules, model).classify(mail)
+    attachments = [("rechnung.pdf", b"%PDF"), ("foto.jpg", b"\xff\xd8 vertraulich")]
+    mail = make_mail("Lang", "x" * 10_000, attachments=attachments)
+    read = {"rechnung.pdf": "Rechnungsnummer R-1 " + "y" * 5000, "foto.jpg": None}
+    AIClassifier(rules, model, read_attachment=lambda a: read[a.filename]).classify(mail)
     user = model.calls[0][1]
-    assert user.count("x") <= 4000 + 10 and "vertraulich" not in user and "geheim.pdf" not in user
+    assert user.count("x") <= 4000 + 10
+    assert "--- Anhang rechnung.pdf ---" in user and "Rechnungsnummer R-1" in user
+    assert user.count("y") <= 3000 and "vertraulich" not in user and "foto.jpg" not in user
+
+
+def test_scanned_pdf_goes_to_human_without_ai_call(rules, make_mail):
+    model = ScriptedModel("groq", ok())
+    mail = make_mail("Scan", "Anbei", attachments=[("scan.pdf", b"%PDF")])
+    c = AIClassifier(rules, model, read_attachment=lambda a: "").classify(mail)
+    assert c.label == UNCLEAR and "Scan" in c.reason and model.calls == []
 
 
 @pytest.mark.parametrize(

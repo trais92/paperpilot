@@ -59,6 +59,8 @@ label{display:block;margin:8px 0}input[type=text],input[type=password]{width:24r
 border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--fg)}
 fieldset{border:0;padding:0;margin:8px 0}legend{font-weight:600}.check label{display:inline-block;margin:4px 16px 4px 0}
 form+h2{margin-top:24px}
+label.field{margin:0 0 4px}label.field input{width:9rem;padding:2px 6px;border:1px solid var(--line);
+border-radius:6px;background:transparent;color:var(--fg)}
 .ok{color:var(--ok)}.bad{color:var(--bad)}.notice{padding:8px 12px;border-radius:8px;border:1px solid currentColor}
 @media (max-width:700px){thead{display:none}tr{display:block;padding:8px 0;border-bottom:1px solid var(--line)}
 td{display:block;border:0;padding:4px 0}input[type=text],input[type=password]{width:100%}}

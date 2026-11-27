@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 
 from ..classify import UNCLEAR, FixedClassifier
 from ..config import Rules
+from ..fields import FIELD_LABELS, FIELD_NAMES, FieldError, parse_form_fields
 from ..models import Classification, Mail, MailPlan
 from ..pipeline import RunResult, render_report, run
 from ..ports import StorageTarget
@@ -63,17 +64,30 @@ class ReviewSession:
             raise UnknownAction(action)
 
     def approve(self, form: Mapping[str, str]) -> RunResult:
-        """Führt den Plan mit den Korrekturen aus `form` aus (`label-<n>` je Mail)."""
+        """Führt den Plan mit den Korrekturen aus `form` aus (`label-<n>` und `f-<n>-<feld>` je Mail).
+
+        Erst wird alles geprüft, dann einmal ausgeführt: Ist eine Angabe ungültig, wird nichts geschrieben.
+        """
         self._check(form)
-        decided: dict[str, Classification] = {}
-        for n, p in enumerate(self.plan.plans):
-            label = form.get(f"label-{n}", p.classification.label)
-            if label not in self.labels:
-                raise ReviewError(f"Unbekannte Kategorie: {label}")
-            same = label == p.classification.label
-            decided[p.mail.id] = p.classification if same else Classification(label, 1.0, CORRECTED)
+        decided = {p.mail.id: self._decision(n, p, form) for n, p in enumerate(self.plan.plans)}
         self.result = run(self.mails, FixedClassifier(decided), self.rules, self.store, apply=True)
         return self.result
+
+    def _decision(self, n: int, p: MailPlan, form: Mapping[str, str]) -> Classification:
+        before = p.classification
+        label = form.get(f"label-{n}", before.label)
+        if label not in self.labels:
+            raise ReviewError(f"Unbekannte Kategorie: {label}")
+        fields = before.fields
+        prefix = f"f-{n}-"
+        if any(key.startswith(prefix) for key in form):
+            try:
+                fields = parse_form_fields(form, prefix)
+            except FieldError as exc:
+                raise ReviewError(f"Mail {n + 1} ({p.mail.subject[:40]}): {exc}") from None
+        if label == before.label and fields == before.fields:
+            return before
+        return Classification(label, 1.0 if label != before.label else before.confidence, CORRECTED, fields)
 
     def cancel(self, form: Mapping[str, str]) -> None:
         self._check(form)
@@ -99,12 +113,12 @@ class ReviewSession:
         rows = "\n".join(self._row(n, p) for n, p in enumerate(self.plan.plans))
         body = f"""
 <p class="lead">{len(self.plan.plans)} neue Mails · {_e(summary)}</p>
-<p>Noch ist nichts geschrieben. Prüfe die Kategorien, korrigiere sie bei Bedarf und gib den Lauf frei.
+<p>Noch ist nichts geschrieben. Prüfe Kategorien und Angaben, korrigiere sie bei Bedarf und gib den Lauf frei.
 Ziel: <strong>{_e(self.store.location)}</strong></p>
 <form method="post" action="/approve">
 <input type="hidden" name="token" value="{_e(self.token)}">
 <table>
-<thead><tr><th>Datum</th><th>Mail</th><th>Kategorie</th><th>Was passiert</th></tr></thead>
+<thead><tr><th>Datum</th><th>Mail</th><th>Kategorie</th><th>Angaben</th><th>Was passiert</th></tr></thead>
 <tbody>
 {rows}
 </tbody>
@@ -130,7 +144,21 @@ Ziel: <strong>{_e(self.store.location)}</strong></p>
             f"<td><strong>{_e(p.mail.subject)}</strong><br><small>{_e(p.mail.sender)}</small></td>"
             f'<td><select name="label-{n}" aria-label="Kategorie">{options}</select>'
             f"<br><small>{_e(c.reason)}</small></td>"
+            f"<td>{self._field_inputs(n, p)}</td>"
             f"<td>{_e(ACTION_TEXT.get(p.action, p.action))}{details}</td></tr>"
+        )
+
+    def _field_inputs(self, n: int, p: MailPlan) -> str:
+        """Eingabefelder für Betrag, Belegdatum, Nummer und Frist, nur bei Mails, die abgelegt werden."""
+        if p.action not in ("file", "review"):
+            return ""
+        values = p.classification.fields
+        hints = {"amount": "49.90 EUR", "document_date": "JJJJ-MM-TT", "reference": "R-123", "due_date": "JJJJ-MM-TT"}
+        return "".join(
+            f'<label class="field"><small>{_e(FIELD_LABELS[name])}</small>'
+            f'<input type="text" name="f-{n}-{name}" value="{_e(getattr(values, name))}" '
+            f'placeholder="{_e(hints[name])}"></label>'
+            for name in FIELD_NAMES
         )
 
     def _done_page(self, result: RunResult) -> str:

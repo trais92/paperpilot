@@ -11,6 +11,8 @@ from .ai.http import Transport, urllib_transport
 from .classify import RuleClassifier
 from .config import Rules
 from .drive import DriveApi, DriveStore, GoogleSession
+from .models import Attachment
+from .pdftext import attachment_text
 from .ports import Classifier, CredentialStore, StorageTarget
 from .store import LocalStore
 
@@ -27,8 +29,14 @@ def make_classifier(
         if creds is None:
             raise ValueError("Für den KI-Klassifizierer werden Zugangsdaten gebraucht.")
         model = build_language_model(rules.ai, creds, transport)
-        return PrefilteredClassifier(rules, AIClassifier(rules, model))
+        read = attachment_text if rules.ai.read_pdfs else _skip_attachment
+        return PrefilteredClassifier(rules, AIClassifier(rules, model, read_attachment=read))
     raise ValueError(f"Unbekannter Klassifizierer: {name}")
+
+
+def _skip_attachment(attachment: Attachment) -> None:
+    """`[ai] read_pdfs = false`: Anhänge bleiben auf dem Rechner."""
+    return None
 
 
 def describe_classifier(classifier: Classifier) -> str:

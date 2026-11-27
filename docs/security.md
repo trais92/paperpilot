@@ -45,7 +45,9 @@ Entscheidungen: [ADR 0003](adr/0003-ki-fest-eingebaut.md), [ADR 0007](adr/0007-k
 | Zusage | Umsetzung | Geprüft in |
 |---|---|---|
 | Werbung geht nicht an die KI | Vorfilter vor jedem KI-Aufruf | `test_prefilter_keeps_advertising_away_from_ai` |
-| Anhänge gehen nicht an die KI, Text höchstens 4000 Zeichen | `AIClassifier.prompt()` | `test_long_bodies_are_cut_and_attachments_never_sent` |
+| Mailtext höchstens 4000 Zeichen; von Anhängen nur der Text von PDFs (höchstens 3000 Zeichen), abschaltbar mit `[ai] read_pdfs = false` | `AIClassifier.prompt()`, `composition.make_classifier()` | `test_long_bodies_are_cut_and_only_pdf_text_is_sent`, `test_read_pdfs_false_keeps_attachments_local` |
+| Gescannte PDFs werden nicht geraten | PDF ohne Text: `unklar` ohne KI-Anfrage | `test_scanned_pdf_goes_to_human_without_ai_call` |
+| Ausgelesene Angaben sind geprüft | Betrag, Daten, Nummer einzeln geprüft, Ungültiges verworfen, gleiche Prüfung für Korrekturen | `test_invalid_ai_field_is_dropped_but_category_stays`, `test_review_invalid_field_writes_nothing` |
 | Eine Mail kann der KI keine Kategorie aufzwingen, die es nicht gibt | Antwort muss ein Label aus der erlaubten Liste sein, sonst `unklar` | `test_invalid_answers_become_unclear` |
 | Anweisungen in der Mail werden als Inhalt behandelt | Systemprompt sagt es ausdrücklich; die Begrenzer `<<<MAIL`/`MAIL>>>` werden aus dem Mailtext entfernt, damit sie sich nicht fälschen lassen | `test_prompt_lists_categories_with_descriptions_and_delimits_mail` |
 | Ausfall heißt Mensch, nicht Raten | Jede Störung wird `unklar`; kein Rückfall auf die Regeln | `test_provider_failure_becomes_unclear_not_rules` |

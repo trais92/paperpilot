@@ -96,11 +96,14 @@ Seit [ADR 0003](adr/0003-ki-fest-eingebaut.md) ist der Regel-Klassifizierer Vorf
 Die KI-Schicht ([ADR 0007](adr/0007-ki-schicht-mit-austauschbaren-modellen.md)).
 
 - **`PrefilteredClassifier`** fragt zuerst die Regeln. Ordnen sie die Mail einer Kategorie mit `action = "ignore"` zu (Werbung), ist sie fertig. Alles andere geht an den `AIClassifier`.
-- **`AIClassifier`** baut die Anfrage: Systemprompt mit festen Regeln, die erlaubten Kategorien mit ihrer `description`, Absender, Betreff und höchstens 4000 Zeichen Text zwischen festen Begrenzern. Die Antwort wird streng geprüft (JSON-Objekt, Label aus der Liste, Sicherheit 0 bis 1). Abweichungen, Störungen und Antworten unter `min_confidence` ergeben `unklar` mit Grund.
+- **`AIClassifier`** baut die Anfrage: Systemprompt mit festen Regeln, die erlaubten Kategorien mit ihrer `description`, Absender, Betreff und höchstens 4000 Zeichen Text zwischen festen Begrenzern. Dazu kommt der Text von PDF-Anhängen (`pdftext.py`, optional `pypdf`). Die Antwort wird streng geprüft (JSON-Objekt, Label aus der Liste, Sicherheit 0 bis 1). Abweichungen, Störungen, Antworten unter `min_confidence` und PDFs ohne Text ergeben `unklar` mit Grund. Die Angaben im Objekt `fields` prüft `fields.py` einzeln ([ADR 0011](adr/0011-angaben-aus-mail-und-pdf.md)).
 - **`OpenAICompatibleModel`** spricht OpenAI-kompatible Anbieter (heute Groq) über `urllib` an (nur `https`), mit Mindestabstand zwischen Anfragen und einmaligem Warten bei HTTP 429. Der HTTP-Baustein (`ai/http.py`) ist austauschbar, Tests nutzen eine Attrappe.
 - **`AnthropicModel`** nutzt das offizielle SDK mit strukturierter Ausgabe; das Paket wird erst beim Gebrauch geladen.
 - **`FallbackModel`** fragt den nächsten Anbieter nur bei `ProviderError`, nicht bei inhaltlich falscher Antwort.
 - **`providers.py`** kennt Adressen und Standardmodelle und baut die Kette aus `[ai]` und den gespeicherten Schlüsseln.
+
+### `fields.py` und `pdftext.py`
+`fields.py` prüft Betrag, Belegdatum, Nummer und Frist (aus der KI-Antwort und aus Korrekturen im Browser) und liefert `models.Fields`; Ungültiges bleibt leer. `pdftext.py` liest Text aus PDF-Anhängen mit dem optionalen Paket `pypdf` und unterscheidet „kein PDF bzw. Paket fehlt“ (`None`) von „PDF ohne Text“ (`""`).
 
 ### `composition.py`
 Kompositionswurzel: `make_classifier()` verbindet Ports und Adapter. Die CLI holt sich hier ihre Objekte; der Kern bleibt frei von konkreten Adaptern (Regel 8).

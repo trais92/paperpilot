@@ -42,10 +42,24 @@ class Mail:
 
 
 @dataclass(frozen=True)
+class Fields:
+    """Angaben aus Mail und Anhang, geprüft in `fields.py`. Leer heißt: nicht (sicher) erkannt."""
+
+    amount: str = ""  # '49.90 EUR'
+    document_date: str = ""  # Rechnungs- bzw. Belegdatum, 'JJJJ-MM-TT'
+    reference: str = ""  # Rechnungs-, Kunden- oder Vertragsnummer
+    due_date: str = ""  # Zahlungs- oder Antwortfrist, 'JJJJ-MM-TT'
+
+    def __bool__(self) -> bool:
+        return any((self.amount, self.document_date, self.reference, self.due_date))
+
+
+@dataclass(frozen=True)
 class Classification:
     label: str  # z. B. 'bewerbung/einladung', 'privat/versicherungen', 'werbung', 'unklar'
     confidence: float
     reason: str = ""
+    fields: Fields = field(default_factory=Fields)
 
     @property
     def group(self) -> str:

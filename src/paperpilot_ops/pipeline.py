@@ -16,7 +16,7 @@ from datetime import datetime
 from .classify import UNCLEAR
 from .config import Rules
 from .deadlines import extract_deadlines
-from .models import Deadline, Mail, MailPlan, PlannedFile
+from .models import Deadline, Fields, Mail, MailPlan, PlannedFile
 from .naming import build_filename, company_from_mail
 from .ports import Classifier, StorageTarget
 from .store import sha256, update_deadlines, update_tracker
@@ -67,26 +67,57 @@ def plan_mail(mail: Mail, classifier: Classifier, rules: Rules, store: StorageTa
     seen.update(f.sha256 for f in p.files)
 
     p.deadlines = extract_deadlines(mail)
+    due = c.fields.due_date  # von der KI erkannte Frist, z. B. aus dem PDF-Anhang
+    if due and all(f"{d.date:%Y-%m-%d}" != due for d in p.deadlines):
+        p.deadlines.append(Deadline(datetime.fromisoformat(due), False, "Frist laut KI", mail.id, mail.subject))
+        p.deadlines.sort(key=lambda d: d.date)
     p.notify = c.label in rules.notify_on or p.action == "review"
     return p
 
 
-OVERVIEW_COLUMNS = ("Datum", "Absender", "Betreff", "Kategorie", "Frist", "Dateien", "Begründung", "Mail-ID")
+OVERVIEW_COLUMNS = (
+    "Datum",
+    "Absender",
+    "Betreff",
+    "Kategorie",
+    "Betrag",
+    "Belegdatum",
+    "Nummer",
+    "Frist",
+    "Dateien",
+    "Begründung",
+    "Mail-ID",
+)
 
 
 def overview_row(plan: MailPlan, written_paths: list[str]) -> dict[str, str]:
     """Eine Zeile der Übersichtstabelle. `written_paths` sind die tatsächlich verwendeten Pfade."""
     deadline = plan.deadlines[0] if plan.deadlines else None
+    fields = plan.classification.fields
     return {
         "Datum": f"{plan.mail.date:%Y-%m-%d}",
         "Absender": plan.company,
         "Betreff": plan.mail.subject,
         "Kategorie": plan.classification.label,
-        "Frist": f"{deadline.date:%Y-%m-%d}" if deadline else "",
+        "Betrag": fields.amount,
+        "Belegdatum": fields.document_date,
+        "Nummer": fields.reference,
+        "Frist": fields.due_date or (f"{deadline.date:%Y-%m-%d}" if deadline else ""),
         "Dateien": " | ".join(written_paths),
         "Begründung": plan.classification.reason,
         "Mail-ID": plan.mail.id,
     }
+
+
+def describe_fields(fields: Fields) -> str:
+    """Kurzform für Bericht und Browser, z. B. `49.90 EUR · Nr. R-1 · Frist 2026-12-15`."""
+    parts = [
+        fields.amount,
+        f"Nr. {fields.reference}" if fields.reference else "",
+        f"vom {fields.document_date}" if fields.document_date else "",
+        f"Frist {fields.due_date}" if fields.due_date else "",
+    ]
+    return " · ".join(part for part in parts if part)
 
 
 @dataclass
@@ -159,6 +190,11 @@ def render_report(result: RunResult, location: str, now: datetime | None = None)
         lines.append("\nZUR PRÜFUNG (unklar, liegt im Eingang):")
         for p in review:
             lines.append(f"  ? {p.mail.subject}  [{p.classification.reason}]")
+    with_fields = [p for p in filed + review if p.classification.fields]
+    if with_fields:
+        lines.append("\nANGABEN:")
+        for p in with_fields:
+            lines.append(f"  € {describe_fields(p.classification.fields):<40} {p.mail.subject}")
     deadlines = [d for p in result.plans for d in p.deadlines]
     if deadlines:
         lines.append("\nFRISTEN & TERMINE:")

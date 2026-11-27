@@ -29,7 +29,7 @@ Es werden keine Zugangsdaten und keine zusätzlichen Pakete gebraucht, nur Pytho
 Für das eigene Postfach führt ein Assistent im Browser durch die Einrichtung (Postfach, KI-Schlüssel, Kategorien, Ablageziel) und zeigt danach den ersten Lauf zur Freigabe:
 
 ```bash
-pip install ".[keyring]"
+pip install ".[keyring,pdf]"
 paperpilot setup
 ```
 
@@ -209,6 +209,8 @@ paperpilot run --source imap      # Trockenlauf: KI sortiert, nichts wird geschr
 ```
 
 Voreingestellt ist Groq mit seinem kostenlosen Tarif, ohne Kreditkarte. Wer einen eigenen, kostenpflichtigen Claude-Schlüssel hat, kann Claude zusätzlich als Reserve oder statt Groq nutzen (`pip install ".[llm]"`). Die Antwort der KI wird streng geprüft: nur erlaubte Kategorien, Sicherheit unter 0,6 ergibt `unklar`. Fällt jeder Anbieter aus, landet die Mail im Eingang, es wird nicht still auf die Regeln zurückgefallen. Werbung erkennt schon der Vorfilter, sie geht gar nicht an die KI. Ohne KI: `--classifier rules`.
+
+Die KI liest außerdem Betrag, Belegdatum, Rechnungs- oder Kundennummer und Frist aus, auch aus PDF-Anhängen (`pip install ".[pdf]"`). Die Angaben landen in der Übersicht und lassen sich mit `--browser` vor der Freigabe korrigieren; gescannte PDFs ohne Text gehen in den Eingang.
 
 Anbieter, Kosten, Kontingente und was genau gesendet wird: [docs/ai-providers.md](docs/ai-providers.md).
 

@@ -12,11 +12,12 @@
 ### KI-Schicht (Roadmap 2)
 
 - Die KI ordnet jede Mail ein, die der Vorfilter nicht als Werbung erkannt hat. `paperpilot run` nutzt sie standardmäßig; `--classifier rules` bleibt als Weg ohne KI.
-- Anbieter austauschbar über den neuen Port `LanguageModel`: Groq (voreingestellt, kostenloser Tarif) und Mistral (Reserve) ohne Zusatzpaket über `urllib`, Claude über das Extra `[llm]`. Reserve-Kette bei Ausfall.
+- Anbieter austauschbar über den neuen Port `LanguageModel`: Groq (voreingestellt, kostenloser Tarif ohne Kreditkarte) ohne Zusatzpaket über `urllib`, Claude optional mit eigenem Schlüssel über das Extra `[llm]`. Reserve-Kette bei Ausfall.
 - Antworten werden streng geprüft (erlaubte Kategorie, Sicherheit 0 bis 1, Mindestsicherheit `min_confidence`); alles andere wird `unklar`.
 - Konfiguration: neuer Abschnitt `[ai]`, Feld `description` je Kategorie; die Standardkategorien haben Beschreibungen.
-- `paperpilot login --ai groq|mistral|claude` speichert API-Schlüssel im Schlüsselbund.
+- `paperpilot login --ai groq|claude` speichert API-Schlüssel im Schlüsselbund.
 - Kompositionswurzel `composition.py`; `make_classifier()` ist von `classify.py` dorthin umgezogen.
+- Nur kostenlose Anbieter voreingestellt; Mistral nicht aufgenommen, weil die API eine Abrechnung verlangt.
 - Entfernt: `LLMClassifier`, `--classifier llm` und die Umgebungsvariable `PAPERPILOT_MODEL` (ersetzt durch `--classifier ai` mit `provider = "claude"` und `[ai.models]`).
 - ADR 0007, `docs/ai-providers.md` mit Quellen, KI-Abschnitt im Sicherheitskonzept.
 

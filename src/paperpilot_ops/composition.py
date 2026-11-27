@@ -30,7 +30,7 @@ def make_classifier(
 
 
 def describe_classifier(classifier: Classifier) -> str:
-    """Kurzbeschreibung für den Bericht, z. B. `KI: groq → mistral (Vorfilter: Regeln)`."""
+    """Kurzbeschreibung für den Bericht, z. B. `KI: groq (Vorfilter: Regeln)`."""
     if isinstance(classifier, PrefilteredClassifier) and isinstance(classifier.ai, AIClassifier):
         return f"KI: {classifier.ai.model.name} (Vorfilter: Regeln)"
     if isinstance(classifier, RuleClassifier):

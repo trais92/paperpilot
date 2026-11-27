@@ -1,16 +1,33 @@
 # KI-Anbieter
 
-PaperPilot fragt für jede Mail, die nicht schon der Vorfilter als Werbung erkannt hat, ein Sprachmodell nach der passenden Kategorie. Welche Anbieter es gibt, was sie kosten und wie man sie einrichtet, steht hier. Die Architektur dahinter: [ADR 0007](adr/0007-ki-schicht-mit-austauschbaren-modellen.md).
+PaperPilot fragt für jede Mail, die nicht schon der Vorfilter als Werbung erkannt hat, ein Sprachmodell nach der passenden Kategorie. Welche Anbieter es gibt, nach welchen Kriterien sie ausgewählt sind und wie man sie einrichtet, steht hier. Die Architektur dahinter: [ADR 0007](adr/0007-ki-schicht-mit-austauschbaren-modellen.md).
+
+## Auswahlkriterium
+
+Voreingestellt wird nur, was **ohne Kreditkarte und ohne Abrechnung** dauerhaft nutzbar ist. PaperPilot richtet sich an Menschen ohne Programmierkenntnisse; ein Bezahlschritt bei der Einrichtung macht das Werkzeug für sie unbrauchbar. Zweites Kriterium ist der Datenschutz: Der Anbieter soll Mail-Inhalte nicht zum Training nutzen.
 
 ## Überblick
 
 | Anbieter | Rolle | Kosten | Modell (Standard) | Schnittstelle |
 |---|---|---|---|---|
-| Groq | voreingestellt | kostenloser Tarif mit Kontingent | `openai/gpt-oss-20b` | OpenAI-kompatibel, ohne Zusatzpaket |
-| Mistral | Reserve | laut Doku nur mit aktivierter Abrechnung | `mistral-small-latest` | OpenAI-kompatibel, ohne Zusatzpaket |
-| Claude (Anthropic) | optional | nutzungsabhängig | `claude-opus-5-5` | offizielles SDK, Extra `[llm]` |
+| Groq | voreingestellt | kostenloser Tarif mit Kontingent, keine Kreditkarte | `openai/gpt-oss-20b` | OpenAI-kompatibel, ohne Zusatzpaket |
+| Claude (Anthropic) | optional | kostenpflichtig, eigener Schlüssel | `claude-opus-5-5` | offizielles SDK, Extra `[llm]` |
 
-Die Reihenfolge steht in der Konfiguration (`[ai]`, siehe [configuration.md](configuration.md#ai)). Anbieter ohne gespeicherten Schlüssel werden übersprungen. Fällt der erste Anbieter aus (keine Verbindung, Schlüssel abgelehnt, Kontingent erschöpft), wird der nächste gefragt. Antwortet keiner, landet die Mail als `unklar` im Eingang und wird beim nächsten Lauf erneut versucht.
+Die Reihenfolge steht in der Konfiguration (`[ai]`, siehe [configuration.md](configuration.md#ai)). Wer einen Claude-Schlüssel hat, kann ihn mit `fallback = ["claude"]` als Reserve eintragen. Anbieter ohne gespeicherten Schlüssel werden übersprungen. Antwortet kein Anbieter, landet die Mail als `unklar` im Eingang und wird beim nächsten Lauf erneut versucht.
+
+## Geprüfte, aber nicht aufgenommene Anbieter
+
+Stand 27.11.2026, jeweils in den offiziellen Unterlagen geprüft:
+
+| Anbieter | Ergebnis | Grund |
+|---|---|---|
+| Mistral | nicht aufgenommen | „Free mode … doesn't include API access“; API erst nach Aktivierung der Abrechnung |
+| Cerebras | nicht aufgenommen | Testguthaben nur nach Hinterlegen eines Zahlungsmittels, verfällt nach 30 Tagen |
+| GitHub Models | nicht aufgenommen | seit 30.07.2026 eingestellt |
+| OpenRouter (`:free`-Modelle) | vorgemerkt, nicht aufgenommen | ohne Guthaben nur 50 Anfragen pro Tag; ob die Gratis-Endpunkte Daten zum Training nutzen, hängt vom jeweiligen Betreiber ab und ist nicht zugesichert |
+| Google Gemini | nicht aufgenommen | im Gratis-Tarif Nutzung zum Training und menschliche Prüfung; für Angebote an Nutzer in der EU verlangen die Bedingungen den Bezahltarif |
+
+Ein zweiter Gratis-Anbieter als Reserve kommt dazu, sobald einer beide Kriterien erfüllt. Die Schicht ist dafür vorbereitet: Ein OpenAI-kompatibler Anbieter ist ein Eintrag in `ai/providers.py`.
 
 ## Einrichten
 
@@ -20,11 +37,10 @@ paperpilot login --ai groq        # Schlüssel einfügen, wird im Schlüsselbund
 paperpilot run                    # Trockenlauf mit KI
 ```
 
-Ohne Schlüsselbund: Umgebungsvariable `PAPERPILOT_GROQ_API_KEY` (bzw. `PAPERPILOT_MISTRAL_API_KEY`, `PAPERPILOT_CLAUDE_API_KEY`).
+Ohne Schlüsselbund: Umgebungsvariable `PAPERPILOT_GROQ_API_KEY` (bzw. `PAPERPILOT_CLAUDE_API_KEY`).
 
-- **Groq:** Konto auf console.groq.com anlegen, unter *API Keys* einen Schlüssel erzeugen.
-- **Mistral:** Konto auf console.mistral.ai, Abrechnung aktivieren, Schlüssel erzeugen. Unter den Datenschutz-Einstellungen lässt sich die Nutzung der Daten zum Training abschalten.
-- **Claude:** Konto auf platform.claude.com, Schlüssel erzeugen, `pip install ".[llm]"`.
+- **Groq:** Konto auf console.groq.com anlegen, unter *API Keys* einen Schlüssel erzeugen. Keine Kreditkarte nötig.
+- **Claude (optional):** Konto auf platform.claude.com, Schlüssel erzeugen, `pip install ".[llm]"`, `paperpilot login --ai claude`.
 
 ## Was gesendet wird
 
@@ -32,16 +48,19 @@ Pro Mail ein Aufruf mit der Liste der erlaubten Kategorien samt Beschreibung, Ab
 
 ## Kontingente
 
-Gratis-Tarife begrenzen Anfragen pro Minute und pro Tag. PaperPilot hält deshalb einen Mindestabstand zwischen zwei Anfragen (Groq 2 s, Mistral 1 s), wartet bei „zu viele Anfragen“ (HTTP 429) einmal so lange, wie der Anbieter mit `Retry-After` verlangt (höchstens 20 s), und fragt danach die Reserve.
+Der kostenlose Groq-Tarif erlaubt für `openai/gpt-oss-20b` 30 Anfragen pro Minute und 1000 pro Tag. PaperPilot hält deshalb mindestens 2 Sekunden Abstand zwischen zwei Anfragen, wartet bei „zu viele Anfragen“ (HTTP 429) einmal so lange, wie der Anbieter mit `Retry-After` verlangt (höchstens 20 s), und fragt danach die Reserve, falls eine eingetragen ist. Bei 1000 Anfragen pro Tag reicht der Tarif für die allermeisten privaten Postfächer, zumal Werbung und Duplikate nicht mitzählen.
 
-## Stand der Angaben und Quellen
+## Quellen
 
-Geprüft am 27.11.2026 in den offiziellen Unterlagen. Anbieter ändern Tarife und Modellnamen; Modelle lassen sich deshalb in `[ai.models]` überschreiben, ohne den Code anzufassen.
+Anbieter ändern Tarife und Modellnamen; Modelle lassen sich deshalb in `[ai.models]` überschreiben, ohne den Code anzufassen.
 
-- Mistral, Chat-Schnittstelle (Endpunkt, Anmeldung, `response_format` mit `json_object` und `json_schema`): https://docs.mistral.ai/api/endpoint/chat
-- Mistral, Nutzung und Kontingente („Free mode … doesn't include API access“, API erst nach Aktivierung der Abrechnung): https://docs.mistral.ai/deployment/ai-studio/tier
 - Groq, Schnittstelle (Endpunkt `https://api.groq.com/openai/v1/chat/completions`): https://console.groq.com/docs/api-reference
 - Groq, strukturierte Ausgabe (JSON-Modus für alle Modelle, strenges Schema nur für einzelne): https://console.groq.com/docs/structured-outputs
 - Groq, Kontingente des kostenlosen Tarifs und `retry-after`: https://console.groq.com/docs/rate-limits
+- Mistral, Nutzung und Kontingente: https://docs.mistral.ai/deployment/ai-studio/tier
+- Cerebras, Kontingente und Testguthaben: https://inference-docs.cerebras.ai/support/rate-limits
+- GitHub Models, Einstellung: https://docs.github.com/en/github-models/use-github-models/prototyping-with-ai-models
+- OpenRouter, Kontingente der `:free`-Modelle: https://openrouter.ai/docs/api/reference/limits
+- OpenRouter, Datenschutz: https://openrouter.ai/docs/faq
 
 **Noch nicht gegen die echten Schnittstellen gemessen.** Alle Tests laufen mit Attrappen. Beim ersten echten Lauf prüfen: Groq akzeptiert `response_format: json_object` mit `openai/gpt-oss-20b`; Claude akzeptiert `fallbacks="default"` mit der Beta `server-side-fallback-2026-07-01` in der installierten SDK-Version.

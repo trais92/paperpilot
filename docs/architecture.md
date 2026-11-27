@@ -21,7 +21,7 @@ flowchart LR
         PF --> AI[AIClassifier]
     end
     subgraph Adapter_lm[Sprachmodelle]
-        FB[FallbackModel] --> OC[OpenAICompatibleModel<br/>Groq, Mistral]
+        FB[FallbackModel] --> OC[OpenAICompatibleModel<br/>Groq]
         FB --> AN[AnthropicModel<br/>Claude]
     end
     subgraph Adapter_aus[Ablageziel]
@@ -96,7 +96,7 @@ Die KI-Schicht ([ADR 0007](adr/0007-ki-schicht-mit-austauschbaren-modellen.md)).
 
 - **`PrefilteredClassifier`** fragt zuerst die Regeln. Ordnen sie die Mail einer Kategorie mit `action = "ignore"` zu (Werbung), ist sie fertig. Alles andere geht an den `AIClassifier`.
 - **`AIClassifier`** baut die Anfrage: Systemprompt mit festen Regeln, die erlaubten Kategorien mit ihrer `description`, Absender, Betreff und höchstens 4000 Zeichen Text zwischen festen Begrenzern. Die Antwort wird streng geprüft (JSON-Objekt, Label aus der Liste, Sicherheit 0 bis 1). Abweichungen, Störungen und Antworten unter `min_confidence` ergeben `unklar` mit Grund.
-- **`OpenAICompatibleModel`** spricht Groq und Mistral über `urllib` an (nur `https`), mit Mindestabstand zwischen Anfragen und einmaligem Warten bei HTTP 429. Der HTTP-Baustein (`ai/http.py`) ist austauschbar, Tests nutzen eine Attrappe.
+- **`OpenAICompatibleModel`** spricht OpenAI-kompatible Anbieter (heute Groq) über `urllib` an (nur `https`), mit Mindestabstand zwischen Anfragen und einmaligem Warten bei HTTP 429. Der HTTP-Baustein (`ai/http.py`) ist austauschbar, Tests nutzen eine Attrappe.
 - **`AnthropicModel`** nutzt das offizielle SDK mit strukturierter Ausgabe; das Paket wird erst beim Gebrauch geladen.
 - **`FallbackModel`** fragt den nächsten Anbieter nur bei `ProviderError`, nicht bei inhaltlich falscher Antwort.
 - **`providers.py`** kennt Adressen und Standardmodelle und baut die Kette aus `[ai]` und den gespeicherten Schlüsseln.

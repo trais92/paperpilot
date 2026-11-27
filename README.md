@@ -7,7 +7,7 @@
 ![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-> *English: PaperPilot is a Python CLI with a dependency-free core that that classifies incoming mail with a hosted language model (Groq, Mistral or Claude, behind one interface; keyword rules act as an advertising pre-filter and offline baseline), files mails and attachments under a strict naming convention, extracts deadlines into an `.ics` calendar file, maintains an application tracker and measures classifier accuracy on a labelled test set. `paperpilot demo` runs instantly on anonymous sample data.*
+> *English: PaperPilot is a Python CLI with a dependency-free core that classifies incoming mail with a hosted language model (free Groq tier by default, optionally Claude, behind one interface; keyword rules act as an advertising pre-filter and offline baseline), files mails and attachments under a strict naming convention, extracts deadlines into an `.ics` calendar file, maintains an application tracker and measures classifier accuracy on a labelled test set. `paperpilot demo` runs instantly on anonymous sample data.*
 
 PaperPilot ist die Code-Fassung eines Systems, das ich zuerst mit einem KI-Koordinator und mehreren Agenten über Google-Workspace-Connectoren betrieben habe. Hier steckt derselbe Kern als nachvollziehbarer, testbarer Code. Drei Grundsätze ziehen sich durch: **Trockenlauf vor Ausführung, im Zweifel der Mensch, Messen statt Schätzen.**
 
@@ -96,7 +96,7 @@ flowchart LR
     subgraph Pipeline
         F[Abruf<br/>seit letztem Lauf] --> V{Vorfilter<br/>Regeln}
         V -->|Werbung| D[Duplikat-Check<br/>SHA-256]
-        V -->|alles andere| L[KI<br/>Groq → Mistral<br/>oder Claude]
+        V -->|alles andere| L[KI<br/>Groq gratis<br/>oder Claude]
         L -->|geprüfte Antwort<br/>oder unklar| D
         D --> P[Plan]
     end
@@ -197,7 +197,7 @@ paperpilot login --ai groq        # API-Schlüssel einmal speichern (Schlüsselb
 paperpilot run --source imap      # Trockenlauf: KI sortiert, nichts wird geschrieben
 ```
 
-Voreingestellt ist Groq (kostenloser Tarif), Mistral springt als Reserve ein, Claude ist optional (`pip install ".[llm]"`). Die Antwort der KI wird streng geprüft: nur erlaubte Kategorien, Sicherheit unter 0,6 ergibt `unklar`. Fällt jeder Anbieter aus, landet die Mail im Eingang, es wird nicht still auf die Regeln zurückgefallen. Werbung erkennt schon der Vorfilter, sie geht gar nicht an die KI. Ohne KI: `--classifier rules`.
+Voreingestellt ist Groq mit seinem kostenlosen Tarif, ohne Kreditkarte. Wer einen eigenen, kostenpflichtigen Claude-Schlüssel hat, kann Claude zusätzlich als Reserve oder statt Groq nutzen (`pip install ".[llm]"`). Die Antwort der KI wird streng geprüft: nur erlaubte Kategorien, Sicherheit unter 0,6 ergibt `unklar`. Fällt jeder Anbieter aus, landet die Mail im Eingang, es wird nicht still auf die Regeln zurückgefallen. Werbung erkennt schon der Vorfilter, sie geht gar nicht an die KI. Ohne KI: `--classifier rules`.
 
 Anbieter, Kosten, Kontingente und was genau gesendet wird: [docs/ai-providers.md](docs/ai-providers.md).
 
@@ -221,7 +221,7 @@ schtasks /create /tn "paperpilot-mail" /sc daily /st 09:00 /tr "paperpilot run -
 | `paperpilot run` | Postfach einsortieren (Standard: Trockenlauf) | `--source json\|imap`, `--input`, `--target`, `--classifier ai\|rules`, `--since`, `--apply` |
 | `paperpilot eval` | Trefferquote messen | `--testset`, `--classifier`, `--min-accuracy` |
 | `paperpilot init` | Regeldatei anlegen | `--path` |
-| `paperpilot login` | Postfach-Zugang oder KI-Schlüssel im Schlüsselbund speichern | `--ai groq\|mistral\|claude`, `--status`, `--no-check` |
+| `paperpilot login` | Postfach-Zugang oder KI-Schlüssel im Schlüsselbund speichern | `--ai groq\|claude`, `--status`, `--no-check` |
 | `paperpilot logout` | Gespeicherte Zugangsdaten löschen | |
 
 ## Entwicklung

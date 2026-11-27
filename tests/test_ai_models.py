@@ -98,22 +98,22 @@ def test_contract_key_never_in_repr(adapter):
     assert KEY not in repr(adapter[0]())
 
 
-# -- OpenAI-kompatibel (Mistral, Groq) ----------------------------------------------------
+# -- OpenAI-kompatibel (Groq) ----------------------------------------------------
 
 
 def test_openai_request_shape():
     transport = FakeTransport(chat_response(ANSWER, usage={"prompt_tokens": 50, "completion_tokens": 9}))
-    model = OpenAICompatibleModel("mistral", "https://api.mistral.example/v1/", "klein", KEY, transport=transport)
+    model = OpenAICompatibleModel("groq", "https://api.groq.example/v1/", "klein", KEY, transport=transport)
     completion = model.complete_json("SYS", "USER", {"type": "object", "x": 1})
     req = transport.requests[0]
     body = json.loads(req.body)
-    assert req.method == "POST" and req.url == "https://api.mistral.example/v1/chat/completions"
+    assert req.method == "POST" and req.url == "https://api.groq.example/v1/chat/completions"
     assert req.headers["Authorization"] == f"Bearer {KEY}"
     assert body["model"] == "klein" and body["temperature"] == 0
     assert body["response_format"] == {"type": "json_object"}
     assert body["messages"][0]["role"] == "system" and '"x": 1' in body["messages"][0]["content"]
     assert body["messages"][1] == {"role": "user", "content": "USER"}
-    assert (completion.provider, completion.input_tokens, completion.output_tokens) == ("mistral", 50, 9)
+    assert (completion.provider, completion.input_tokens, completion.output_tokens) == ("groq", 50, 9)
     assert KEY not in repr(req)
 
 
@@ -215,14 +215,14 @@ def test_anthropic_without_sdk_explains_extra(monkeypatch):
 
 def test_fallback_asks_next_only_on_provider_error():
     first = ScriptedModel("groq", ProviderError("groq", "rate_limit", "voll"))
-    second = ScriptedModel("mistral", ANSWER)
+    second = ScriptedModel("reserve", ANSWER)
     chain = FallbackModel(first, second)
-    assert chain.name == "groq → mistral"
-    assert chain.complete_json("s", "u", SCHEMA).provider == "mistral"
+    assert chain.name == "groq → reserve"
+    assert chain.complete_json("s", "u", SCHEMA).provider == "reserve"
 
 
 def test_fallback_does_not_ask_reserve_after_an_answer():
-    first, second = ScriptedModel("groq", "kein json"), ScriptedModel("mistral", ANSWER)
+    first, second = ScriptedModel("groq", "kein json"), ScriptedModel("reserve", ANSWER)
     assert FallbackModel(first, second).complete_json("s", "u", SCHEMA).text == "kein json"
     assert second.calls == []
 
@@ -230,9 +230,9 @@ def test_fallback_does_not_ask_reserve_after_an_answer():
 def test_fallback_reports_all_failures():
     chain = FallbackModel(
         ScriptedModel("groq", ProviderError("groq", "network", "x")),
-        ScriptedModel("mistral", ProviderError("mistral", "auth", "y")),
+        ScriptedModel("reserve", ProviderError("reserve", "auth", "y")),
     )
-    with pytest.raises(ProviderError, match=r"groq \(network\); mistral \(auth\)"):
+    with pytest.raises(ProviderError, match=r"groq \(network\); reserve \(auth\)"):
         chain.complete_json("s", "u", SCHEMA)
 
 
@@ -244,18 +244,29 @@ def test_fallback_needs_a_model():
 # -- Aufbau aus Konfiguration und Zugangsdaten --------------------------------------------
 
 
-def test_build_uses_only_providers_with_keys():
-    creds = EnvCredentialStore({"PAPERPILOT_MISTRAL_API_KEY": KEY})
-    model = build_language_model(AISettings(provider="groq", fallback=("mistral",)), creds)
-    assert model.name == "mistral"
+def _fake_anthropic_sdk(monkeypatch):
+    monkeypatch.setitem(sys.modules, "anthropic", types.SimpleNamespace(Anthropic=lambda api_key: object()))
 
 
-def test_build_chain_and_model_override():
-    creds = EnvCredentialStore({"PAPERPILOT_GROQ_API_KEY": KEY, "PAPERPILOT_MISTRAL_API_KEY": KEY})
-    settings = AISettings(provider="groq", fallback=("mistral",), models={"mistral": "mistral-large-latest"})
+def test_build_uses_only_providers_with_keys(monkeypatch):
+    _fake_anthropic_sdk(monkeypatch)
+    creds = EnvCredentialStore({"PAPERPILOT_CLAUDE_API_KEY": KEY})
+    model = build_language_model(AISettings(provider="groq", fallback=("claude",)), creds)
+    assert model.name == "claude"
+
+
+def test_build_chain_and_model_override(monkeypatch):
+    _fake_anthropic_sdk(monkeypatch)
+    creds = EnvCredentialStore({"PAPERPILOT_GROQ_API_KEY": KEY, "PAPERPILOT_CLAUDE_API_KEY": KEY})
+    settings = AISettings(provider="groq", fallback=("claude",), models={"groq": "anderes-modell"})
     model = build_language_model(settings, creds)
-    assert isinstance(model, FallbackModel) and model.name == "groq → mistral"
-    assert "mistral-large-latest" in repr(model)
+    assert isinstance(model, FallbackModel) and model.name == "groq → claude"
+    assert "anderes-modell" in repr(model)
+
+
+def test_default_settings_use_only_free_groq():
+    model = build_language_model(AISettings(), EnvCredentialStore({"PAPERPILOT_GROQ_API_KEY": KEY}))
+    assert model.name == "groq" and "openai/gpt-oss-20b" in repr(model)
 
 
 def test_build_claude_with_injected_sdk(monkeypatch):

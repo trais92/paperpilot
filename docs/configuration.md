@@ -19,10 +19,10 @@ Stichwörter werden kleingeschrieben verglichen und als Teilstring gesucht (`"te
 
 | Feld | Typ | Standard | Bedeutung |
 |---|---|---|---|
-| `provider` | String | `"groq"` | Anbieter, der zuerst gefragt wird: `groq`, `mistral` oder `claude` |
-| `fallback` | Liste | `["mistral"]` | Reserve, der Reihe nach. Anbieter ohne Schlüssel werden übersprungen |
+| `provider` | String | `"groq"` | Anbieter, der zuerst gefragt wird: `groq` (kostenlos) oder `claude` (eigener Schlüssel) |
+| `fallback` | Liste | `[]` | Reserve, der Reihe nach. Anbieter ohne Schlüssel werden übersprungen |
 | `min_confidence` | Zahl 0–1 | `0.6` | Darunter wird `unklar` vergeben |
-| `[ai.models]` | Tabelle | – | Optional ein anderes Modell je Anbieter, z. B. `mistral = "mistral-large-latest"` |
+| `[ai.models]` | Tabelle | – | Optional ein anderes Modell je Anbieter, z. B. `groq = "openai/gpt-oss-120b"` |
 
 Unbekannte Anbieter oder eine Sicherheit außerhalb von 0 bis 1 sind ein Fehler beim Laden. Anbieter und Einrichtung: [ai-providers.md](ai-providers.md).
 

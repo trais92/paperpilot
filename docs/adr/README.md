@@ -10,7 +10,7 @@ Jede Entscheidung, die die Struktur von PaperPilot prägt, steht hier als kurzes
 | [0004](0004-zugangsdaten-im-schluesselbund.md) | Zugangsdaten im Schlüsselbund des Betriebssystems | Akzeptiert | erledigt |
 | [0005](0005-ablage-ordnerstruktur-lokal-oder-drive.md) | Ablage als Ordnerstruktur, lokal oder in Google Drive | Akzeptiert | lokal mit Übersichtstabellen erledigt, Drive geplant |
 | [0006](0006-imap-als-einzige-mailquelle.md) | IMAP als einzige Quelle für echte Mails | Akzeptiert | erledigt |
-| [0007](0007-ki-schicht-mit-austauschbaren-modellen.md) | KI-Schicht mit austauschbaren Sprachmodellen | Vorgeschlagen | erledigt |
+| [0007](0007-ki-schicht-mit-austauschbaren-modellen.md) | KI-Schicht mit austauschbaren Sprachmodellen | Akzeptiert | erledigt |
 
 ## Vorlage
 

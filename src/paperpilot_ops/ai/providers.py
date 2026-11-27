@@ -23,10 +23,12 @@ class OpenAICompatibleProvider:
     min_interval: float  # Sekunden zwischen zwei Anfragen, passend zum Gratis-Kontingent
 
 
+# Aufgenommen werden nur Anbieter, die ohne Kreditkarte und ohne Abrechnung nutzbar sind
+# (Kriterien und geprüfte Kandidaten: docs/ai-providers.md). Claude ist die bewusste Ausnahme:
+# nicht voreingestellt, nur mit eigenem, kostenpflichtigem Schlüssel.
 OPENAI_COMPATIBLE: dict[str, OpenAICompatibleProvider] = {
     # Gratis-Tarif: 30 Anfragen pro Minute, 1000 pro Tag für dieses Modell.
     "groq": OpenAICompatibleProvider("https://api.groq.com/openai/v1", "openai/gpt-oss-20b", 2.0),
-    "mistral": OpenAICompatibleProvider("https://api.mistral.ai/v1", "mistral-small-latest", 1.0),
 }
 
 

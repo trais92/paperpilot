@@ -38,7 +38,6 @@ KEYS: Mapping[str, str] = {
     "imap_user": "PAPERPILOT_IMAP_USER",
     "imap_password": "PAPERPILOT_IMAP_PASSWORD",
     "groq_api_key": "PAPERPILOT_GROQ_API_KEY",
-    "mistral_api_key": "PAPERPILOT_MISTRAL_API_KEY",
     "claude_api_key": "PAPERPILOT_CLAUDE_API_KEY",
 }
 

@@ -30,7 +30,7 @@ class Group:
 
 
 # Bekannte KI-Anbieter. Die Technik dahinter steht in ai/providers.py.
-AI_PROVIDERS = ("groq", "mistral", "claude")
+AI_PROVIDERS = ("groq", "claude")
 
 
 @dataclass(frozen=True)
@@ -38,7 +38,7 @@ class AISettings:
     """Abschnitt `[ai]`: welcher Anbieter zuerst gefragt wird und welche als Reserve dienen."""
 
     provider: str = "groq"
-    fallback: tuple[str, ...] = ("mistral",)
+    fallback: tuple[str, ...] = ()
     min_confidence: float = 0.6  # darunter wird `unklar` vergeben
     models: dict[str, str] = field(default_factory=dict)  # optional: anderes Modell je Anbieter
 

@@ -10,16 +10,17 @@
 #   z. B. "06 Rechnungen & Belege/Übersicht.csv".
 
 [ai]
-# Anbieter, der zuerst gefragt wird: "groq", "mistral" oder "claude".
+# Anbieter, der zuerst gefragt wird: "groq" (kostenlos, voreingestellt)
+# oder "claude" (eigener, kostenpflichtiger Schlüssel).
 provider = "groq"
-# Reserve, falls der erste Anbieter nicht antwortet oder sein Kontingent erschöpft ist.
-# Anbieter ohne gespeicherten Schlüssel werden übersprungen.
-fallback = ["mistral"]
+# Reserve, falls der erste Anbieter nicht antwortet oder sein Kontingent erschöpft ist,
+# z. B. ["claude"]. Anbieter ohne gespeicherten Schlüssel werden übersprungen.
+fallback = []
 # Ist sich die KI weniger sicher als dieser Wert, landet die Mail im Eingang zur Prüfung.
 min_confidence = 0.6
 # Optional ein anderes Modell je Anbieter:
 # [ai.models]
-# mistral = "mistral-small-latest"
+# groq = "openai/gpt-oss-20b"
 
 [general]
 # Ordner fuer die Ablage (z. B. ein per Google Drive for Desktop synchronisierter Ordner)

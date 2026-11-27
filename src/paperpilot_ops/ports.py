@@ -5,7 +5,7 @@ Jede konkrete Technik ist ein austauschbarer Adapter:
 
 - `MailSource`: Mails seit dem letzten Lauf liefern. Adapter: `ImapSource`, `JsonSource`.
 - `Classifier`: Kategorie oder `unklar` bestimmen. Adapter: `RuleClassifier`, `AIClassifier`, `PrefilteredClassifier`.
-- `LanguageModel`: ein Sprachmodell nach JSON fragen. Adapter: `OpenAICompatibleModel` (Mistral, Groq),
+- `LanguageModel`: ein Sprachmodell nach JSON fragen. Adapter: `OpenAICompatibleModel` (Groq),
   `AnthropicModel` (Claude), `FallbackModel` (Reserve-Kette).
 - `StorageTarget`: ablegen ohne Überschreiben, Übersichten, Lauf-Stand. Adapter: `LocalStore`, `MemoryStore`.
 - `CredentialStore`: Zugangsdaten lesen, nie in Dateien. Adapter: `EnvCredentialStore`,
@@ -64,7 +64,7 @@ class LanguageModel(Protocol):
 
     @property
     def name(self) -> str:
-        """Kurzname für Bericht und Begründung, z. B. `mistral` oder `groq → mistral`."""
+        """Kurzname für Bericht und Begründung, z. B. `groq` oder `groq → claude`."""
         ...
 
     def complete_json(self, system: str, user: str, schema: dict[str, Any]) -> Completion: ...

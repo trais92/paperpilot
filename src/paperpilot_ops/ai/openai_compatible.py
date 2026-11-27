@@ -1,8 +1,8 @@
-"""Adapter für Anbieter mit OpenAI-kompatibler Chat-Schnittstelle (Mistral, Groq).
+"""Adapter für Anbieter mit OpenAI-kompatibler Chat-Schnittstelle (heute Groq).
 
 Spricht `POST {base_url}/chat/completions` mit der Standardbibliothek an. Strukturierte Ausgabe wird
-über den JSON-Modus (`response_format: json_object`) angefordert, den beide Anbieter für alle Modelle
-anbieten; das Schema steht zusätzlich im Systemprompt. Die eigentliche Prüfung macht der Aufrufer.
+über den JSON-Modus (`response_format: json_object`) angefordert, den OpenAI-kompatible Anbieter
+breit unterstützen; das Schema steht zusätzlich im Systemprompt. Die eigentliche Prüfung macht der Aufrufer.
 
 Verhalten bei Störungen:
 - 429 (Kontingent): einmal warten (höchstens `max_retry_wait` Sekunden, `Retry-After` wird beachtet),

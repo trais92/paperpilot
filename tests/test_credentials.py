@@ -294,5 +294,5 @@ def test_login_ai_stores_api_key(vault, monkeypatch, capsys):
 
 def test_login_ai_empty_key_stores_nothing(vault, monkeypatch):
     monkeypatch.setattr("getpass.getpass", lambda *_: "")
-    assert cli.main(["login", "--ai", "mistral"]) == 1
-    assert vault.get("mistral_api_key") is None
+    assert cli.main(["login", "--ai", "claude"]) == 1
+    assert vault.get("claude_api_key") is None

@@ -14,25 +14,25 @@ def _write(tmp_path, text):
 def test_defaults_without_ai_section(tmp_path):
     rules = load_rules(_write(tmp_path, ""))
     assert rules.ai == AISettings()
-    assert rules.ai.chain == ("groq", "mistral")
+    assert rules.ai.chain == ("groq",)
 
 
 def test_ai_section_is_read(tmp_path):
     path = _write(
         tmp_path,
-        '[ai]\nprovider = "mistral"\nfallback = ["groq", "mistral"]\nmin_confidence = 0.75\n'
-        '[ai.models]\nmistral = "mistral-large-latest"\n',
+        '[ai]\nprovider = "claude"\nfallback = ["groq", "claude"]\nmin_confidence = 0.75\n'
+        '[ai.models]\ngroq = "anderes-modell"\n',
     )
     ai = load_rules(path).ai
-    assert ai.chain == ("mistral", "groq")  # doppelte Einträge fallen weg
-    assert ai.min_confidence == 0.75 and ai.models == {"mistral": "mistral-large-latest"}
+    assert ai.chain == ("claude", "groq")  # doppelte Einträge fallen weg
+    assert ai.min_confidence == 0.75 and ai.models == {"groq": "anderes-modell"}
 
 
 @pytest.mark.parametrize(
     "text",
     [
         '[ai]\nprovider = "orakel"\n',
-        '[ai]\nfallback = ["gemini"]\n',
+        '[ai]\nfallback = ["mistral"]\n',
         "[ai]\nmin_confidence = 2\n",
         '[ai.models]\nx = "y"\n',
     ],

@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import json
 import secrets
 import shutil
 import sys
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import datetime
 from importlib import resources
 from pathlib import Path
+from typing import TextIO
 
 from . import __version__
 from .ai import MissingAIKeyError
@@ -18,7 +21,7 @@ from .ai.providers import credential_key
 from .composition import CLASSIFIERS, MissingGoogleLoginError, describe_classifier, make_classifier, make_store
 from .config import AI_PROVIDERS, STORAGE_TARGETS, Rules, default_rules_text, load_rules
 from .credentials import KEYS, CredentialStoreError, KeyringCredentialStore, default_credential_store
-from .evaluate import evaluate, render_eval
+from .evaluate import SPLITS, evaluate, render_eval
 from .models import Mail
 from .pipeline import RunResult, render_report, run
 from .ports import Classifier, CredentialStore, MailSource, MutableCredentialStore, StorageTarget
@@ -167,14 +170,16 @@ def cmd_logout(args: argparse.Namespace) -> int:
     return 0
 
 
-def _classifier_or_exit(name: str, rules: Rules, creds: CredentialStore) -> Classifier | None:
+def _classifier_or_exit(
+    name: str, rules: Rules, creds: CredentialStore, out: TextIO | None = None
+) -> Classifier | None:
     """Baut den Klassifizierer vor dem Abruf, damit ein fehlender Schlüssel sofort auffällt."""
     try:
         classifier = make_classifier(name, rules, creds)
     except MissingAIKeyError as exc:
         print(f"{exc}\nOhne KI (nur Stichwörter): --classifier rules", file=sys.stderr)
         return None
-    print(f"Sortiert mit: {describe_classifier(classifier)}")
+    print(f"Sortiert mit: {describe_classifier(classifier)}", file=out or sys.stdout)
     return classifier
 
 
@@ -268,14 +273,21 @@ def cmd_setup(args: argparse.Namespace) -> int:
     return int(cmd_run(run_args))
 
 
+TESTSETS = {"standard": "eval_set.jsonl", "angaben": "testset.jsonl"}
+
+
 def cmd_eval(args: argparse.Namespace) -> int:
     rules = _load_rules(args.rules)
-    classifier = _classifier_or_exit(args.classifier, rules, default_credential_store())
+    if args.provider:  # einen Anbieter allein messen, ohne Reserve
+        rules = replace(rules, ai=replace(rules.ai, provider=args.provider, fallback=()))
+    out = sys.stderr if args.json else sys.stdout  # bei --json bleibt stdout reines JSON
+    classifier = _classifier_or_exit(args.classifier, rules, default_credential_store(), out)
     if classifier is None:
         return 2
-    samples = JsonSource(args.testset or _data("eval_set.jsonl")).load()
-    report = evaluate(classifier, samples)
-    print(render_eval(report))
+    testset = args.testset or "standard"
+    samples = JsonSource(_data(TESTSETS[testset]) if testset in TESTSETS else testset).load()
+    report = evaluate(classifier, samples, args.split)
+    print(json.dumps(report.to_dict(), ensure_ascii=False, indent=2) if args.json else render_eval(report))
     if args.min_accuracy is not None and report.accuracy < args.min_accuracy:
         print(f"\nFEHLER: Genauigkeit {report.accuracy:.1%} < Mindestwert {args.min_accuracy:.1%}", file=sys.stderr)
         return 1
@@ -321,11 +333,14 @@ def build_parser() -> argparse.ArgumentParser:
     r.set_defaults(func=cmd_run)
 
     e = sub.add_parser("eval", help="Trefferquote auf gelabeltem Testset messen")
-    e.add_argument("--testset")
+    e.add_argument("--testset", help="standard (Vorgabe), angaben (mit Beträgen, Fristen, PDFs) oder Pfad")
+    e.add_argument("--split", choices=SPLITS, default="all", help="nur dev oder holdout messen")
     e.add_argument("--rules")
     e.add_argument(
         "--classifier", choices=CLASSIFIERS, default="rules", help="rules (Standard, Vergleichswert) oder ai"
     )
+    e.add_argument("--provider", choices=AI_PROVIDERS, help="bei --classifier ai: nur diesen Anbieter messen")
+    e.add_argument("--json", action="store_true", help="Ergebnis als JSON (zum Vergleichen und Archivieren)")
     e.add_argument("--min-accuracy", type=float, help="Exit-Code 1, wenn darunter (für CI)")
     e.set_defaults(func=cmd_eval)
 

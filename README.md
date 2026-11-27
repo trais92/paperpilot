@@ -170,7 +170,7 @@ Vollständige Referenz mit allen Feldern und dem Scoring: [docs/configuration.md
 paperpilot eval
 ```
 
-Der Regel-Klassifizierer (Vorfilter und Vergleichswert) auf dem mitgelieferten Testset (52 anonyme, gelabelte Mails, 13 Klassen). Die KI misst `paperpilot eval --classifier ai`; Zahlen je Anbieter folgen mit dem größeren Testset (Roadmap 5).
+Der Regel-Klassifizierer (Vorfilter und Vergleichswert) auf dem mitgelieferten Testset (52 anonyme, gelabelte Mails, 13 Klassen). Die KI misst `paperpilot eval --classifier ai`.
 
 | Kennzahl | Wert |
 |---|---|
@@ -183,6 +183,8 @@ Der Regel-Klassifizierer (Vorfilter und Vergleichswert) auf dem mitgelieferten T
 Von den 5 Fehlern landen 3 als `unklar` beim Menschen. Nur 2 bekommen ein falsches Label, und eines davon liegt trotzdem im richtigen Firmenordner. Typisch sind Formulierungen ohne Signalwörter, etwa eine Absage ohne „leider" („Die Stelle wurde inzwischen besetzt").
 
 > **Einordnung:** Testset und Regeln stammen vom selben Autor, die Zahlen sind deshalb eher optimistisch. Die Regeln wurden bewusst nicht auf die Fehlerfälle nachoptimiert. Methodik und Grenzen: [docs/evaluation.md](docs/evaluation.md).
+
+Ein zweites, größeres Testset (`paperpilot eval --testset angaben`, 208 Mails mit Beträgen, Fristen und PDF-Anhängen) ist in `dev` und ein nie angesehenes `holdout` geteilt. Dort zeigen die Stichwörter ihre Grenze: 76,4 % auf dev, aber nur 39,1 % auf holdout, weil neue Formulierungen meist als `unklar` beim Menschen landen. Deshalb entscheidet in echten Läufen die KI; ihre Zahlen werden mit einem echten Schlüssel gemessen (siehe [docs/evaluation.md](docs/evaluation.md#testset-mit-angaben-roadmap-5)).
 
 ## Mit echtem Postfach
 

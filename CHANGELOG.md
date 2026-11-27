@@ -2,6 +2,12 @@
 
 ## Unveröffentlicht
 
+### Testset mit Angaben und Dev/Holdout (Roadmap 5)
+
+- `data/testset.jsonl`: 208 erfundene Mails mit erwarteten Angaben, 28 PDF-Anhängen (davon 4 Scans) und Aufteilung `dev`/`holdout` nach Vorlage; erzeugt von `tools/make_testset.py`, ein Test prüft die Übereinstimmung.
+- `paperpilot eval`: `--testset angaben`, `--split dev|holdout`, `--json`, `--provider`; Precision/Recall je Angabe und Verwechslungen.
+- Ergebnis Regeln: 76,4 % auf dev, 39,1 % auf holdout. KI-Messung steht aus (braucht Schlüssel).
+
 ### Angaben aus Mail und PDF (Roadmap 4)
 
 - Die KI liest Betrag, Belegdatum, Rechnungs-/Kundennummer und Frist aus, auch aus dem Text von PDF-Anhängen (optionales Extra `[pdf]`, `[ai] read_pdfs`).

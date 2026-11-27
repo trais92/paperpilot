@@ -1,15 +1,19 @@
 # Evaluation
 
-PaperPilot misst seinen Klassifizierer auf einem gelabelten Testset, damit Regeländerungen oder ein Wechsel zum LLM auf Zahlen beruhen statt auf Eindruck.
+PaperPilot misst seinen Klassifizierer auf gelabelten Testsets, damit Regeländerungen und die Wahl des KI-Anbieters auf Zahlen beruhen statt auf Eindruck.
 
 ```bash
-paperpilot eval                              # Regeln, mitgeliefertes Testset
-paperpilot eval --classifier llm             # LLM, gleiches Testset
-paperpilot eval --testset meine_mails.jsonl  # eigenes Testset
-paperpilot eval --min-accuracy 0.85          # Exit-Code 1 darunter (CI)
+paperpilot eval                                          # Regeln, Standard-Testset (52 Mails, CI-Tor)
+paperpilot eval --testset angaben --split dev            # Testset mit Angaben, nur Entwicklungsteil
+paperpilot eval --testset angaben --split holdout        # nur der nie angesehene Teil
+paperpilot eval --classifier ai --provider groq --testset angaben --json > groq.json
+paperpilot eval --testset meine_mails.jsonl              # eigenes Testset
+paperpilot eval --min-accuracy 0.85                      # Exit-Code 1 darunter (CI)
 ```
 
-## Testset
+`--json` schreibt alle Kennzahlen (inkl. Verwechslungsmatrix) maschinenlesbar auf die Standardausgabe; Hinweise gehen dann auf die Fehlerausgabe. `--provider` misst einen Anbieter allein, ohne Reserve.
+
+## Standard-Testset
 
 [`src/paperpilot_ops/data/eval_set.jsonl`](../src/paperpilot_ops/data/eval_set.jsonl): 52 frei erfundene deutsche Mails, eine pro Zeile:
 
@@ -78,15 +82,48 @@ Muster: Drei der fünf Fehler (e11, e18, e44) gehen auf reine Teilstring-Suche z
 ## Grenzen und Fallstricke
 
 - **Gleicher Autor:** Regeln und Testset stammen aus derselben Hand. Das begünstigt die Regeln. Die Zahlen sind eine Obergrenze, keine Prognose.
-- **Kein Nachoptimieren:** Die Fehler oben könnten mit ein paar Stichwörtern behoben werden. Das ist bewusst nicht passiert, sonst misst das Testset nur noch, ob die Regeln es auswendig kennen. Wer optimiert, sollte vorher ein separates Validierungsset abspalten.
+- **Kein Nachoptimieren:** Die Fehler oben könnten mit ein paar Stichwörtern behoben werden. Das ist bewusst nicht passiert, sonst misst das Testset nur noch, ob die Regeln es auswendig kennen. Für Optimierung gibt es jetzt das Testset mit Angaben und seinem `dev`-Teil.
 - **Kleine Klassen:** Bei 3 bis 5 Beispielen pro Klasse ändert ein einzelner Fehler den Recall um 20 bis 33 Punkte.
 - **Synthetische Daten:** Echte Mails sind länger, haben Signaturen, Zitate und HTML. Ein Testset aus echten, anonymisierten Mails ist der wichtigste nächste Schritt.
 
-## Regeln und LLM vergleichen
+## Testset mit Angaben (Roadmap 5)
 
-Vorgehen für einen fairen Vergleich (siehe [roadmap.md](roadmap.md)):
+[`src/paperpilot_ops/data/testset.jsonl`](../src/paperpilot_ops/data/testset.jsonl): 208 erfundene Mails, 16 je Klasse, erzeugt von [`tools/make_testset.py`](../tools/make_testset.py) aus 40 Vorlagen mit festem Zufallsstartwert. Zusätzlich zu `label` enthält jede Mail:
 
-1. Testset vergrößern (Ziel: ≥ 200 Mails, ≥ 10 pro Klasse), davon 30 % als nie angesehenes Holdout.
-2. `paperpilot eval` und `paperpilot eval --classifier llm` auf dem Holdout laufen lassen.
-3. Neben Genauigkeit auch Kosten pro Mail und Laufzeit festhalten.
-4. Hybrid prüfen: Regeln zuerst, LLM nur für `unklar`. Das senkt Kosten und Übergabequote zugleich.
+- `fields`: erwartete Angaben (`amount`, `document_date`, `reference`, `due_date`), nur wenn sie wirklich im Text oder PDF stehen;
+- `split`: `dev` (144) oder `holdout` (64). Jede dritte Vorlage einer Klasse liegt komplett im Holdout, damit es Formulierungen prüft, die beim Entwickeln nie zu sehen waren;
+- bei 28 Mails ein PDF-Anhang, darunter 4 Scans ohne Text, die laut [ADR 0011](adr/0011-angaben-aus-mail-und-pdf.md) `unklar` ergeben müssen.
+
+Ein Test stellt sicher, dass die Datei genau dem Generator entspricht (`python tools/make_testset.py --check`).
+
+| Angabe | Precision | Recall |
+|---|---|---|
+| Bedeutung | Wie oft stimmt eine ausgegebene Angabe? | Wie viele erwartete Angaben werden gefunden? |
+
+Verglichen wird exakt nach Normalisierung (`49,90 €` = `49.90 EUR`, Daten als `JJJJ-MM-TT`). Eine erfundene Angabe senkt die Precision, eine verpasste den Recall.
+
+### Ergebnisse
+
+| Klassifizierer | Split | Mails | Label | Gruppe | Macro-F1 | an Mensch | Angaben |
+|---|---|---|---|---|---|---|---|
+| Regeln | dev | 144 | 76,4 % | 83,3 % | 0,782 | 21,5 % | liest keine aus |
+| Regeln | holdout | 64 | 39,1 % | 46,9 % | 0,300 | 60,9 % | liest keine aus |
+| KI (Groq) | dev / holdout | | noch nicht gemessen | | | | |
+| KI (Claude) | dev / holdout | | noch nicht gemessen | | | | |
+
+Die Lücke zwischen dev und holdout zeigt die Schwäche der Stichwörter: Bei neuen Formulierungen findet der Regel-Klassifizierer die Kategorie meist nicht und gibt ab (`unklar`), statt falsch abzulegen. Genau dafür ist die KI fest eingebaut ([ADR 0003](adr/0003-ki-fest-eingebaut.md)); die Regeln bleiben Vorfilter für Werbung, wo sie auch im Holdout fehlerfrei sind.
+
+Die KI-Zeilen brauchen einen echten Schlüssel und laufen deshalb nicht in der CI. Messen mit:
+
+```bash
+paperpilot login --ai groq
+paperpilot eval --classifier ai --provider groq --testset angaben --split holdout --json > groq-holdout.json
+```
+
+Bei 208 Mails und mindestens 2 Sekunden Abstand dauert ein Lauf gut sieben Minuten und bleibt im Gratis-Kontingent von Groq (1000 Anfragen am Tag).
+
+## Regeln und KI vergleichen
+
+1. Nur auf `dev` entwickeln und nachjustieren (Beschreibungen der Kategorien, Prompt).
+2. Erst am Ende einmal auf `holdout` messen und die Zahlen hier eintragen, mit Datum und Modell.
+3. Neben Genauigkeit die Übergabequote und die Precision der Angaben beachten: Eine falsche Frist ist schlimmer als eine fehlende.

@@ -57,6 +57,16 @@ class Classification:
 
 
 @dataclass(frozen=True)
+class Completion:
+    """Antwort eines Sprachmodells (Port `LanguageModel`)."""
+
+    text: str
+    provider: str  # welcher Anbieter tatsächlich geantwortet hat
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+
+
+@dataclass(frozen=True)
 class Deadline:
     date: datetime
     has_time: bool

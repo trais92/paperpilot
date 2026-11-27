@@ -12,12 +12,14 @@ from importlib import resources
 from pathlib import Path
 
 from . import __version__
-from .classify import make_classifier
-from .config import default_rules_text, load_rules
+from .ai import MissingAIKeyError
+from .ai.providers import credential_key
+from .composition import CLASSIFIERS, describe_classifier, make_classifier
+from .config import AI_PROVIDERS, Rules, default_rules_text, load_rules
 from .credentials import KEYS, CredentialStoreError, KeyringCredentialStore, default_credential_store
 from .evaluate import evaluate, render_eval
 from .pipeline import render_report, run
-from .ports import CredentialStore, MailSource, MutableCredentialStore
+from .ports import Classifier, CredentialStore, MailSource, MutableCredentialStore
 from .sources import ImapSource, JsonSource
 from .store import LocalStore
 
@@ -35,7 +37,8 @@ def cmd_demo(args: argparse.Namespace) -> int:
     mails = list(JsonSource(_data("demo_inbox.json")).fetch(store.last_run()))
     result = run(mails, make_classifier("rules", rules), rules, store, apply=True)
     print(render_report(result, store.location))
-    print("\nTipp: 'paperpilot demo' nochmal ausführen zeigt die Idempotenz (0 neue Mails).")
+    print("\nDie Demo sortiert offline mit Stichwörtern. Echte Läufe nutzen die KI (siehe README).")
+    print("Tipp: 'paperpilot demo' nochmal ausführen zeigt die Idempotenz (0 neue Mails).")
     print("      'paperpilot eval' misst die Trefferquote auf dem Testset.")
     return 0
 
@@ -72,6 +75,8 @@ def cmd_login(args: argparse.Namespace) -> int:
             for key in KEYS:
                 print(f"{key:<16} {'gespeichert' if vault.get(key) else 'fehlt'}")
             return 0
+        if args.ai:
+            return _login_ai(vault, args.ai)
         host = input(f"IMAP-Server [{vault.get('imap_host') or DEFAULT_IMAP_HOST}]: ").strip()
         host = host or vault.get("imap_host") or DEFAULT_IMAP_HOST
         user = input("IMAP-Benutzer (Mailadresse): ").strip()
@@ -96,6 +101,17 @@ def cmd_login(args: argparse.Namespace) -> int:
     return 0
 
 
+def _login_ai(vault: MutableCredentialStore, provider: str) -> int:
+    """API-Schlüssel eines KI-Anbieters im Schlüsselbund speichern."""
+    api_key = getpass.getpass(f"API-Schlüssel für {provider}: ").strip()
+    if not api_key:
+        print("Kein Schlüssel eingegeben. Nichts gespeichert.", file=sys.stderr)
+        return 1
+    vault.set(credential_key(provider), api_key)
+    print(f"Schlüssel für {provider} im Schlüsselbund gespeichert. Löschen mit 'paperpilot logout'.")
+    return 0
+
+
 def cmd_logout(args: argparse.Namespace) -> int:
     """Alle Einträge von PaperPilot aus dem Schlüsselbund löschen."""
     try:
@@ -108,25 +124,43 @@ def cmd_logout(args: argparse.Namespace) -> int:
     return 0
 
 
+def _classifier_or_exit(name: str, rules: Rules, creds: CredentialStore) -> Classifier | None:
+    """Baut den Klassifizierer vor dem Abruf, damit ein fehlender Schlüssel sofort auffällt."""
+    try:
+        classifier = make_classifier(name, rules, creds)
+    except MissingAIKeyError as exc:
+        print(f"{exc}\nOhne KI (nur Stichwörter): --classifier rules", file=sys.stderr)
+        return None
+    print(f"Sortiert mit: {describe_classifier(classifier)}")
+    return classifier
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     rules = load_rules(args.rules)
+    creds = default_credential_store()
+    classifier = _classifier_or_exit(args.classifier, rules, creds)
+    if classifier is None:
+        return 2
     store = LocalStore(args.target or rules.target_dir)
     since = datetime.fromisoformat(args.since) if args.since else store.last_run()
     source: MailSource
     if args.source == "imap":
-        source = _imap_source(default_credential_store())
+        source = _imap_source(creds)
     else:
         source = JsonSource(args.input or _data("demo_inbox.json"))
     mails = list(source.fetch(since))
-    result = run(mails, make_classifier(args.classifier, rules), rules, store, apply=args.apply)
+    result = run(mails, classifier, rules, store, apply=args.apply)
     print(render_report(result, store.location))
     return 0
 
 
 def cmd_eval(args: argparse.Namespace) -> int:
     rules = load_rules(args.rules)
+    classifier = _classifier_or_exit(args.classifier, rules, default_credential_store())
+    if classifier is None:
+        return 2
     samples = JsonSource(args.testset or _data("eval_set.jsonl")).load()
-    report = evaluate(make_classifier(args.classifier, rules), samples)
+    report = evaluate(classifier, samples)
     print(render_eval(report))
     if args.min_accuracy is not None and report.accuracy < args.min_accuracy:
         print(f"\nFEHLER: Genauigkeit {report.accuracy:.1%} < Mindestwert {args.min_accuracy:.1%}", file=sys.stderr)
@@ -145,7 +179,7 @@ def cmd_init(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="paperpilot", description="PaperPilot: Mails regelbasiert einsortieren.")
+    p = argparse.ArgumentParser(prog="paperpilot", description="PaperPilot: Mails mit KI einsortieren und ablegen.")
     p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = p.add_subparsers(dest="cmd", required=True)
 
@@ -160,7 +194,7 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--input", help="JSON/JSONL-Datei bei --source json")
     r.add_argument("--rules")
     r.add_argument("--target", help="Ablage-Ordner (überschreibt target_dir)")
-    r.add_argument("--classifier", choices=["rules", "llm"], default="rules")
+    r.add_argument("--classifier", choices=CLASSIFIERS, default="ai", help="ai (Standard) oder rules (ohne KI)")
     r.add_argument("--since", help="ISO-Datum, sonst seit letztem Lauf")
     r.add_argument("--apply", action="store_true", help="Plan wirklich ausführen")
     r.set_defaults(func=cmd_run)
@@ -168,7 +202,9 @@ def build_parser() -> argparse.ArgumentParser:
     e = sub.add_parser("eval", help="Trefferquote auf gelabeltem Testset messen")
     e.add_argument("--testset")
     e.add_argument("--rules")
-    e.add_argument("--classifier", choices=["rules", "llm"], default="rules")
+    e.add_argument(
+        "--classifier", choices=CLASSIFIERS, default="rules", help="rules (Standard, Vergleichswert) oder ai"
+    )
     e.add_argument("--min-accuracy", type=float, help="Exit-Code 1, wenn darunter (für CI)")
     e.set_defaults(func=cmd_eval)
 
@@ -176,9 +212,10 @@ def build_parser() -> argparse.ArgumentParser:
     i.add_argument("--path", default="rules.toml")
     i.set_defaults(func=cmd_init)
 
-    lg = sub.add_parser("login", help="Postfach-Zugang im Schlüsselbund des Betriebssystems speichern")
+    lg = sub.add_parser("login", help="Postfach-Zugang oder KI-Schlüssel im Schlüsselbund speichern")
     lg.add_argument("--status", action="store_true", help="nur anzeigen, was gespeichert ist (ohne Werte)")
     lg.add_argument("--no-check", action="store_true", help="ohne Probe-Anmeldung speichern")
+    lg.add_argument("--ai", choices=AI_PROVIDERS, help="statt des Postfachs den API-Schlüssel dieses KI-Anbieters")
     lg.set_defaults(func=cmd_login)
 
     lo = sub.add_parser("logout", help="Gespeicherte Zugangsdaten aus dem Schlüsselbund löschen")

@@ -1,15 +1,15 @@
 # PaperPilot
 
-**Mail-Triage und Dokumentenablage nach Regeln: Fristen landen im Kalender, Bewerbungen im Tracker, Unklares beim Menschen. Mit messbarer Trefferquote und ohne Abhängigkeiten.**
+**Mail-Triage und Dokumentenablage mit KI: Eine KI ordnet jede Mail ein, Dokumente landen in einer sortierten Ablage, Fristen im Kalender, Unklares beim Menschen. Mit Trockenlauf, messbarer Trefferquote und einem Kern ohne Abhängigkeiten.**
 
 [![CI](https://github.com/trais92/paperpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/trais92/paperpilot/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)
 ![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-> *English: PaperPilot is a dependency-free Python CLI that classifies incoming mail with configurable rules (or optionally an LLM), files mails and attachments under a strict naming convention, extracts deadlines into an `.ics` calendar file, maintains an application tracker and measures classifier accuracy on a labelled test set. `paperpilot demo` runs instantly on anonymous sample data.*
+> *English: PaperPilot is a Python CLI with a dependency-free core that that classifies incoming mail with a hosted language model (Groq, Mistral or Claude, behind one interface; keyword rules act as an advertising pre-filter and offline baseline), files mails and attachments under a strict naming convention, extracts deadlines into an `.ics` calendar file, maintains an application tracker and measures classifier accuracy on a labelled test set. `paperpilot demo` runs instantly on anonymous sample data.*
 
-PaperPilot ist die Code-Fassung eines Systems, das ich zuerst mit einem KI-Koordinator und mehreren Agenten über Google-Workspace-Connectoren betrieben habe. Hier steckt derselbe Kern als nachvollziehbarer, testbarer Code. Drei Grundsätze ziehen sich durch: **Regeln statt Bauchgefühl, Trockenlauf vor Ausführung, Messen statt Schätzen.**
+PaperPilot ist die Code-Fassung eines Systems, das ich zuerst mit einem KI-Koordinator und mehreren Agenten über Google-Workspace-Connectoren betrieben habe. Hier steckt derselbe Kern als nachvollziehbarer, testbarer Code. Drei Grundsätze ziehen sich durch: **Trockenlauf vor Ausführung, im Zweifel der Mensch, Messen statt Schätzen.**
 
 **Inhalt:** [Schnellstart](#schnellstart) · [Was passiert](#was-passiert) · [Architektur](#architektur) · [Konfiguration](#konfiguration) · [Evaluation](#evaluation) · [Echtes Postfach](#mit-echtem-postfach) · [Befehle](#befehle) · [Entwicklung](#entwicklung) · [Doku](#dokumentation)
 
@@ -85,11 +85,10 @@ flowchart LR
         I[IMAP-Postfach<br/>nur lesend]
     end
     subgraph Pipeline
-        F[Abruf<br/>seit letztem Lauf] --> C{Klassifizierer}
-        C -->|Standard| R[Regeln<br/>rules.toml]
-        C -->|optional| L[LLM<br/>JSON-Schema]
-        R --> D[Duplikat-Check<br/>SHA-256]
-        L --> D
+        F[Abruf<br/>seit letztem Lauf] --> V{Vorfilter<br/>Regeln}
+        V -->|Werbung| D[Duplikat-Check<br/>SHA-256]
+        V -->|alles andere| L[KI<br/>Groq → Mistral<br/>oder Claude]
+        L -->|geprüfte Antwort<br/>oder unklar| D
         D --> P[Plan]
     end
     P --> H{--apply?}
@@ -108,7 +107,10 @@ flowchart LR
 | Modul | Aufgabe |
 |---|---|
 | [`sources.py`](src/paperpilot_ops/sources.py) | Mail-Quellen: JSON für Demo und Tests, IMAP strikt lesend |
-| [`classify.py`](src/paperpilot_ops/classify.py) | Regel-Klassifizierer mit erklärbarem Score, optional LLM mit strukturierter Ausgabe |
+| [`ai/`](src/paperpilot_ops/ai/) | KI-Schicht: Anbieter als austauschbare Adapter, Reserve-Kette, KI-Klassifizierer mit strenger Prüfung der Antwort |
+| [`classify.py`](src/paperpilot_ops/classify.py) | Regel-Klassifizierer mit erklärbarem Score (Vorfilter, Vergleichswert, Demo) |
+| [`credentials.py`](src/paperpilot_ops/credentials.py) | Zugangsdaten aus Umgebung oder Schlüsselbund |
+| [`composition.py`](src/paperpilot_ops/composition.py) | Verbindet Ports und Adapter an einer Stelle |
 | [`config.py`](src/paperpilot_ops/config.py) + [`default_rules.toml`](src/paperpilot_ops/default_rules.toml) | Alle Entscheidungen als Konfiguration |
 | [`naming.py`](src/paperpilot_ops/naming.py) | Namenskonvention, Umlaute, Firmenname aus der Absender-Domain |
 | [`deadlines.py`](src/paperpilot_ops/deadlines.py) | Fristen und Termine erkennen, Export als iCalendar |
@@ -124,7 +126,8 @@ Details, Datenfluss und Designentscheidungen: [docs/architecture.md](docs/archit
 |---|---|
 | Human-in-the-loop | Standard ist der Trockenlauf, erst `--apply` schreibt. Unsichere Fälle gehen als `unklar` in den Eingang. |
 | Least Privilege | Postfach nur lesend, nichts wird als gelesen markiert, gelöscht oder überschrieben. |
-| Konfiguration statt Code | Kategorien, Stichwörter, Ordner und Meldepflicht stehen in `rules.toml`. |
+| Konfiguration statt Code | Kategorien mit Beschreibung, Ordner, KI-Anbieter und Meldepflicht stehen in `rules.toml`. |
+| KI mit Leitplanken | Antworten werden gegen die erlaubten Kategorien geprüft; Unsicheres und Ausfälle gehen an den Menschen. |
 | Idempotenz | Lauf-Stand plus Inhalts-Hash: kein Doppel, auch bei wiederholten Läufen. |
 | Messbarkeit | `paperpilot eval` und eine CI-Schwelle von 85 % schützen vor Verschlechterung. |
 | Signal statt Rauschen | Gemeldet werden nur Einladung, Rückfrage, Angebot, Absage und Unklares. |
@@ -150,7 +153,7 @@ Vollständige Referenz mit allen Feldern und dem Scoring: [docs/configuration.md
 paperpilot eval
 ```
 
-Der Regel-Klassifizierer auf dem mitgelieferten Testset (52 anonyme, gelabelte Mails, 13 Klassen):
+Der Regel-Klassifizierer (Vorfilter und Vergleichswert) auf dem mitgelieferten Testset (52 anonyme, gelabelte Mails, 13 Klassen). Die KI misst `paperpilot eval --classifier ai`; Zahlen je Anbieter folgen mit dem größeren Testset (Roadmap 5).
 
 | Kennzahl | Wert |
 |---|---|
@@ -178,16 +181,16 @@ paperpilot run --source imap --rules rules.toml --target "G:/Meine Ablage/Persö
 - **Cloud-Ablage:** Als `--target` eignet sich ein per Google Drive for Desktop (oder OneDrive, Dropbox) synchronisierter Ordner.
 - **Kalender:** `Fristen/fristen.ics` in den Kalender importieren.
 
-### Optional: LLM-Klassifizierer
+### KI einrichten
 
 ```bash
-pip install ".[llm]"
-export ANTHROPIC_API_KEY=...
-paperpilot eval --classifier llm
-paperpilot run  --classifier llm --source imap
+paperpilot login --ai groq        # API-Schlüssel einmal speichern (Schlüsselbund)
+paperpilot run --source imap      # Trockenlauf: KI sortiert, nichts wird geschrieben
 ```
 
-Er nutzt die Claude API mit strukturierter Ausgabe (JSON-Schema mit festen Labels). Bei Fehler, Ablehnung oder ungültiger Antwort fällt er auf `unklar` zurück. Das Modell lässt sich mit `PAPERPILOT_MODEL` ändern. Bisher ist er nur mit simulierten Antworten getestet.
+Voreingestellt ist Groq (kostenloser Tarif), Mistral springt als Reserve ein, Claude ist optional (`pip install ".[llm]"`). Die Antwort der KI wird streng geprüft: nur erlaubte Kategorien, Sicherheit unter 0,6 ergibt `unklar`. Fällt jeder Anbieter aus, landet die Mail im Eingang, es wird nicht still auf die Regeln zurückgefallen. Werbung erkennt schon der Vorfilter, sie geht gar nicht an die KI. Ohne KI: `--classifier rules`.
+
+Anbieter, Kosten, Kontingente und was genau gesendet wird: [docs/ai-providers.md](docs/ai-providers.md).
 
 ### Zeitgesteuert
 
@@ -206,10 +209,10 @@ schtasks /create /tn "paperpilot-mail" /sc daily /st 09:00 /tr "paperpilot run -
 | Befehl | Zweck | Wichtige Optionen |
 |---|---|---|
 | `paperpilot demo` | Komplettlauf auf Beispieldaten | `--out DIR`, `--reset`, `--rules` |
-| `paperpilot run` | Postfach einsortieren (Standard: Trockenlauf) | `--source json\|imap`, `--input`, `--target`, `--classifier rules\|llm`, `--since`, `--apply` |
+| `paperpilot run` | Postfach einsortieren (Standard: Trockenlauf) | `--source json\|imap`, `--input`, `--target`, `--classifier ai\|rules`, `--since`, `--apply` |
 | `paperpilot eval` | Trefferquote messen | `--testset`, `--classifier`, `--min-accuracy` |
 | `paperpilot init` | Regeldatei anlegen | `--path` |
-| `paperpilot login` | Postfach-Zugang im Schlüsselbund speichern | `--status`, `--no-check` |
+| `paperpilot login` | Postfach-Zugang oder KI-Schlüssel im Schlüsselbund speichern | `--ai groq\|mistral\|claude`, `--status`, `--no-check` |
 | `paperpilot logout` | Gespeicherte Zugangsdaten löschen | |
 
 ## Entwicklung
@@ -230,6 +233,7 @@ Die CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) prüft auf Pytho
 |---|---|
 | [docs/architecture.md](docs/architecture.md) | Ports und Adapter, Komponenten, Datenfluss, Designentscheidungen |
 | [docs/adr/](docs/adr/README.md) | Architekturentscheidungen mit Alternativen und Folgen |
+| [docs/ai-providers.md](docs/ai-providers.md) | KI-Anbieter, Kosten, Kontingente, Einrichtung, Quellen |
 | [docs/security.md](docs/security.md) | Sicherheitskonzept: Schutzgüter, Zusagen und die Tests dazu |
 | [docs/configuration.md](docs/configuration.md) | Alle Felder der Regeldatei, Scoring, Beispiele |
 | [docs/evaluation.md](docs/evaluation.md) | Testset, Metriken, Fehleranalyse, Grenzen |

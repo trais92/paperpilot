@@ -7,7 +7,7 @@ PaperPilot arbeitet mit dem Postfach, mit privaten Dokumenten und mit Zugangsdat
 | Was | Warum schützenswert |
 |---|---|
 | Postfach | Darf nie verändert werden: keine Mail senden, verschieben, löschen oder als gelesen markieren |
-| Zugangsdaten (App-Passwort, später KI-Schlüssel und Google-Token) | Voller Zugriff auf Postfach bzw. Konten |
+| Zugangsdaten (App-Passwort, KI-Schlüssel, später Google-Token) | Voller Zugriff auf Postfach bzw. Konten |
 | Abgelegte Dokumente | Private Inhalte; ein Überschreiben wäre Datenverlust |
 | Mail-Inhalte unterwegs | Gehen nur an Dienste, die der Mensch ausgewählt hat |
 
@@ -37,6 +37,23 @@ Entscheidung und Alternativen: [ADR 0004](adr/0004-zugangsdaten-im-schluesselbun
 Reihenfolge beim Lesen: erst Umgebungsvariablen, dann Schlüsselbund. So können Server und CI ohne Schlüsselbund arbeiten, und ein Mensch kann einen gespeicherten Wert für einen Lauf bewusst übersteuern. Was fehlt, fragt der Lauf ab und vergisst es danach wieder.
 
 Grenzen: Wer am entsperrten Benutzerkonto sitzt, kann den Schlüsselbund lesen. Das ist bei jedem Programm so, das ohne Passwortabfrage laufen soll, und der Grund, warum PaperPilot nur ein App-Passwort verlangt, das sich beim Mailanbieter einzeln widerrufen lässt.
+
+## KI-Anbieter
+
+Entscheidungen: [ADR 0003](adr/0003-ki-fest-eingebaut.md), [ADR 0007](adr/0007-ki-schicht-mit-austauschbaren-modellen.md). Welche Anbieter, welche Datenregeln: [ai-providers.md](ai-providers.md).
+
+| Zusage | Umsetzung | Geprüft in |
+|---|---|---|
+| Werbung geht nicht an die KI | Vorfilter vor jedem KI-Aufruf | `test_prefilter_keeps_advertising_away_from_ai` |
+| Anhänge gehen nicht an die KI, Text höchstens 4000 Zeichen | `AIClassifier.prompt()` | `test_long_bodies_are_cut_and_attachments_never_sent` |
+| Eine Mail kann der KI keine Kategorie aufzwingen, die es nicht gibt | Antwort muss ein Label aus der erlaubten Liste sein, sonst `unklar` | `test_invalid_answers_become_unclear` |
+| Anweisungen in der Mail werden als Inhalt behandelt | Systemprompt sagt es ausdrücklich; die Begrenzer `<<<MAIL`/`MAIL>>>` werden aus dem Mailtext entfernt, damit sie sich nicht fälschen lassen | `test_prompt_lists_categories_with_descriptions_and_delimits_mail` |
+| Ausfall heißt Mensch, nicht Raten | Jede Störung wird `unklar`; kein Rückfall auf die Regeln | `test_provider_failure_becomes_unclear_not_rules` |
+| Dieselbe Mail geht nicht unnötig an einen zweiten Anbieter | Reserve nur bei Störung, nicht bei falscher Antwort | `test_fallback_does_not_ask_reserve_after_an_answer` |
+| Schlüssel nie in Meldungen oder `repr()` | eigene Meldungen, `__repr__` ohne Schlüssel, auch für die HTTP-Anfrage | `test_contract_key_never_in_repr`, `test_openai_http_errors` |
+| Nur verschlüsselte Verbindungen | `OpenAICompatibleModel` lehnt andere Adressen als `https://` ab | `test_openai_only_https` |
+
+Grenze: Eine Mail kann die KI zu einer falschen, aber erlaubten Kategorie verleiten. Deshalb bleibt der Trockenlauf Standard und jede Ablage nachvollziehbar (Begründung im Bericht).
 
 ## Meldung von Schwachstellen
 

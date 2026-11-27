@@ -1,6 +1,6 @@
 # Konfiguration (`rules.toml`)
 
-Alles, was PaperPilot entscheidet, steht in einer TOML-Datei. Ohne `--rules` wird die mitgelieferte [`default_rules.toml`](../src/paperpilot_ops/default_rules.toml) verwendet. `paperpilot init` kopiert sie als `rules.toml` zum Anpassen.
+Alles, was PaperPilot entscheidet, steht in einer TOML-Datei: welche KI gefragt wird, welche Kategorien es gibt und wohin sie abgelegt werden. Ohne `--rules` wird die mitgelieferte [`default_rules.toml`](../src/paperpilot_ops/default_rules.toml) verwendet. `paperpilot init` kopiert sie als `rules.toml` zum Anpassen.
 
 Stichwörter werden kleingeschrieben verglichen und als Teilstring gesucht (`"termin"` trifft auch „Terminbestätigung“).
 
@@ -14,6 +14,17 @@ Stichwörter werden kleingeschrieben verglichen und als Teilstring gesucht (`"te
 | `review_folder` | String | `"00 Eingang"` | Ziel für unklare Mails |
 | `tracker` | String | `"Bewerbungen/tracker.csv"` | Pfad des Trackers, relativ zur Ablage |
 | `generic_domains` | Liste | gmail.com, gmx.de, web.de, … | Hier wird der Anzeigename statt der Domain als Absender genutzt |
+
+## `[ai]`
+
+| Feld | Typ | Standard | Bedeutung |
+|---|---|---|---|
+| `provider` | String | `"groq"` | Anbieter, der zuerst gefragt wird: `groq`, `mistral` oder `claude` |
+| `fallback` | Liste | `["mistral"]` | Reserve, der Reihe nach. Anbieter ohne Schlüssel werden übersprungen |
+| `min_confidence` | Zahl 0–1 | `0.6` | Darunter wird `unklar` vergeben |
+| `[ai.models]` | Tabelle | – | Optional ein anderes Modell je Anbieter, z. B. `mistral = "mistral-large-latest"` |
+
+Unbekannte Anbieter oder eine Sicherheit außerhalb von 0 bis 1 sind ein Fehler beim Laden. Anbieter und Einrichtung: [ai-providers.md](ai-providers.md).
 
 ## `[groups.<name>]`
 
@@ -29,11 +40,12 @@ Eine Gruppe ist eine Vorbedingung für zusammengehörige Kategorien.
 | Feld | Pflicht | Bedeutung |
 |---|---|---|
 | `label` | ja | Eindeutiger Name, Konvention `gruppe/untertyp` oder `bereich/thema` |
-| `keywords` | ja | Stichwörter |
+| `description` | empfohlen | Ein Satz, was in diese Kategorie gehört. Danach richtet sich die KI. Fehlt er, bekommt die KI die ersten Stichwörter als Hinweis |
+| `keywords` | nein | Stichwörter für Vorfilter und Regel-Klassifizierer |
 | `senders` | nein | Teilstrings der Absenderadresse, zählen stark (×3) |
 | `group` | nein | Zugehörige Gruppe |
 | `folder` | nein | Zielordner, sonst der Ordner der Gruppe, sonst `review_folder` |
-| `action` | nein | `"file"` (Standard) oder `"ignore"` |
+| `action` | nein | `"file"` (Standard) oder `"ignore"`. Kategorien mit `ignore` bilden den Vorfilter: Was die Regeln dort einordnen, geht nicht an die KI |
 
 ### Platzhalter in `folder`
 
@@ -42,7 +54,9 @@ Eine Gruppe ist eine Vorbedingung für zusammengehörige Kategorien.
 | `{company}` | Firmen-/Absendername aus der Domain | `Kranich-Logistik` |
 | `{year}` | Jahr des Mail-Datums | `2026` |
 
-## Scoring
+## Scoring (Regel-Klassifizierer)
+
+Gilt für den Vorfilter, für `--classifier rules` und für die Demo.
 
 Für jede Mail und jede Kategorie:
 
@@ -75,8 +89,11 @@ Den Grund jeder Entscheidung zeigt der Bericht (z. B. `Score 5, naechster 2`).
 [[categories]]
 label = "privat/gesundheit"
 folder = "08 Gesundheit/{year}"
+description = "Arztrechnungen, Rezepte und Post der Krankenkasse."
 keywords = ["praxis", "arztrechnung", "krankenkasse", "rezept", "heil- und kostenplan"]
 ```
+
+Für die KI genügt die Beschreibung; die Stichwörter braucht nur der Regel-Klassifizierer.
 
 **Newsletter eines bestimmten Absenders immer ignorieren:**
 

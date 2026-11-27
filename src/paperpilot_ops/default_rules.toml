@@ -1,6 +1,22 @@
-# Regeln fuer paperpilot-ops
+# Konfiguration für PaperPilot
 # Alles, was das System entscheidet, steht hier und nicht im Code.
-# Stichwoerter werden kleingeschrieben verglichen. Treffer im Betreff zaehlen doppelt.
+#
+# - Die KI ordnet jede Mail einer Kategorie zu. Dafür liest sie `description`.
+# - Die Stichwörter (`keywords`, `senders`) dienen dem Vorfilter: Was sie sicher als Werbung
+#   erkennen, geht gar nicht erst an die KI. Außerdem sind sie der Vergleichswert in `paperpilot eval`.
+#   Stichwörter werden kleingeschrieben verglichen, Treffer im Betreff zählen doppelt.
+
+[ai]
+# Anbieter, der zuerst gefragt wird: "groq", "mistral" oder "claude".
+provider = "groq"
+# Reserve, falls der erste Anbieter nicht antwortet oder sein Kontingent erschöpft ist.
+# Anbieter ohne gespeicherten Schlüssel werden übersprungen.
+fallback = ["mistral"]
+# Ist sich die KI weniger sicher als dieser Wert, landet die Mail im Eingang zur Prüfung.
+min_confidence = 0.6
+# Optional ein anderes Modell je Anbieter:
+# [ai.models]
+# mistral = "mistral-small-latest"
 
 [general]
 # Ordner fuer die Ablage (z. B. ein per Google Drive for Desktop synchronisierter Ordner)
@@ -25,6 +41,7 @@ generic_domains = ["gmail.com", "gmx.de", "web.de", "outlook.com", "icloud.com",
 # Werbung: wird nie abgelegt
 [[categories]]
 label = "werbung"
+description = "Newsletter, Rabattaktionen, Werbung und automatische Job-Empfehlungen von Portalen."
 action = "ignore"
 keywords = [
   "newsletter", "abmelden", "abbestellen", "unsubscribe", "rabatt", "% auf",
@@ -45,26 +62,31 @@ folder = "Bewerbungen/{company}"
 
 [[categories]]
 label = "bewerbung/eingangsbestaetigung"
+description = "Bestätigung, dass eine selbst eingereichte Bewerbung eingegangen ist."
 group = "bewerbung"
 keywords = ["eingegangen", "erhalten", "vielen dank für ihre bewerbung", "danke für deine bewerbung", "eingangsbestätigung", "melden uns"]
 
 [[categories]]
 label = "bewerbung/einladung"
+description = "Einladung zu einem Gespräch, Interview oder Kennenlernen zu einer Bewerbung."
 group = "bewerbung"
 keywords = ["einladung", "einladen", "kennenlernen", "interview", "gespräch am", "termin", "video-call", "vorstellungsgespräch"]
 
 [[categories]]
 label = "bewerbung/rueckfrage"
+description = "Rückfrage zu einer Bewerbung, z. B. nach Unterlagen, Gehalt oder Verfügbarkeit."
 group = "bewerbung"
 keywords = ["rückfrage", "frage zu", "könnten sie uns", "kannst du uns", "bitte senden sie", "nachreichen", "gehaltsvorstellung", "verfügbarkeit"]
 
 [[categories]]
 label = "bewerbung/absage"
+description = "Absage auf eine Bewerbung."
 group = "bewerbung"
 keywords = ["leider", "absage", "nicht berücksichtigen", "anderen kandidaten", "entschieden", "viel erfolg für ihre", "nicht weiter"]
 
 [[categories]]
 label = "bewerbung/angebot"
+description = "Vertrags- oder Stellenangebot nach einer Bewerbung."
 group = "bewerbung"
 keywords = ["angebot", "vertragsangebot", "arbeitsvertrag", "freuen uns, ihnen", "zusage", "willkommen im team"]
 
@@ -72,30 +94,36 @@ keywords = ["angebot", "vertragsangebot", "arbeitsvertrag", "freuen uns, ihnen",
 # Private Verwaltung
 [[categories]]
 label = "privat/rechnungen"
+description = "Rechnungen, Belege, Quittungen und Bestellbestätigungen mit Betrag."
 folder = "06 Rechnungen & Belege/{year}"
 keywords = ["rechnung", "rechnungsnummer", "rechnungsbetrag", "zahlungsziel", "beleg", "quittung", "bestellbestätigung"]
 
 [[categories]]
 label = "privat/versicherungen"
+description = "Post der eigenen Versicherungen: Police, Beitrag, Schadenfall."
 folder = "05 Versicherungen"
 keywords = ["versicherung", "police", "versicherungsschein", "beitragsanpassung", "schadenfall", "versicherungsnummer"]
 
 [[categories]]
 label = "privat/vertraege"
+description = "Verträge mit Anbietern (Strom, Telefon, Abos): Bestätigung, Tarif, Kündigung."
 folder = "04 Verträge"
 keywords = ["vertrag", "vertragsbestätigung", "kündigung", "laufzeit", "tarif", "tarifwechsel", "widerruf"]
 
 [[categories]]
 label = "privat/steuern"
+description = "Post vom Finanzamt und alles zur Steuererklärung."
 folder = "03 Steuern/{year}"
 keywords = ["finanzamt", "steuerbescheid", "elster", "einkommensteuer", "steuererklärung", "lohnsteuerbescheinigung"]
 
 [[categories]]
 label = "privat/wohnen"
+description = "Miete, Nebenkosten, Vermieter, Hausverwaltung, Zählerstände."
 folder = "09 Wohnen"
 keywords = ["miete", "nebenkosten", "vermieter", "hausverwaltung", "wohnung", "zählerstand", "abschlag"]
 
 [[categories]]
 label = "privat/finanzen"
+description = "Bank und Geldanlage: Kontoauszüge, Depot, Kreditkarte, Überweisungen."
 folder = "02 Finanzen"
 keywords = ["kontoauszug", "depot", "girokonto", "kreditkarte", "überweisung", "sparplan", "kontostand"]

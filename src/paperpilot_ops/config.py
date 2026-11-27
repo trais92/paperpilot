@@ -1,4 +1,4 @@
-"""Laedt die Regeldatei (TOML)."""
+"""Lädt die Konfigurationsdatei (TOML): Kategorien, Ordner, Vorfilter-Regeln und KI-Einstellungen."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import tomllib
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -16,6 +17,7 @@ class Category:
     group: str = ""
     folder: str = ""
     action: str = "file"  # 'file' | 'ignore'
+    description: str = ""  # Beschreibung in einem Satz, damit die KI die Kategorie versteht
 
 
 @dataclass(frozen=True)
@@ -23,6 +25,41 @@ class Group:
     name: str
     keywords: tuple[str, ...]
     folder: str
+
+
+# Bekannte KI-Anbieter. Die Technik dahinter steht in ai/providers.py.
+AI_PROVIDERS = ("groq", "mistral", "claude")
+
+
+@dataclass(frozen=True)
+class AISettings:
+    """Abschnitt `[ai]`: welcher Anbieter zuerst gefragt wird und welche als Reserve dienen."""
+
+    provider: str = "groq"
+    fallback: tuple[str, ...] = ("mistral",)
+    min_confidence: float = 0.6  # darunter wird `unklar` vergeben
+    models: dict[str, str] = field(default_factory=dict)  # optional: anderes Modell je Anbieter
+
+    @property
+    def chain(self) -> tuple[str, ...]:
+        """Anbieter in der Reihenfolge, in der sie gefragt werden, ohne Doppelte."""
+        return tuple(dict.fromkeys((self.provider, *self.fallback)))
+
+
+def _load_ai(raw: dict[str, Any]) -> AISettings:
+    default = AISettings()
+    settings = AISettings(
+        provider=raw.get("provider", default.provider),
+        fallback=tuple(raw.get("fallback", default.fallback)),
+        min_confidence=float(raw.get("min_confidence", default.min_confidence)),
+        models=dict(raw.get("models", {})),
+    )
+    unknown = [p for p in (*settings.chain, *settings.models) if p not in AI_PROVIDERS]
+    if unknown:
+        raise ValueError(f"Unbekannter KI-Anbieter {unknown[0]!r}, erlaubt: {', '.join(AI_PROVIDERS)}")
+    if not 0.0 <= settings.min_confidence <= 1.0:
+        raise ValueError("ai.min_confidence muss zwischen 0 und 1 liegen")
+    return settings
 
 
 @dataclass(frozen=True)
@@ -35,6 +72,7 @@ class Rules:
     generic_domains: frozenset[str]
     categories: tuple[Category, ...]
     groups: dict[str, Group] = field(default_factory=dict)
+    ai: AISettings = field(default_factory=AISettings)
 
     @property
     def labels(self) -> list[str]:
@@ -74,6 +112,7 @@ def load_rules(path: str | Path | None = None) -> Rules:
             group=c.get("group", ""),
             folder=c.get("folder", ""),
             action=c.get("action", "file"),
+            description=c.get("description", ""),
         )
         for c in raw.get("categories", [])
     )
@@ -89,4 +128,5 @@ def load_rules(path: str | Path | None = None) -> Rules:
         generic_domains=frozenset(d.lower() for d in g.get("generic_domains", [])),
         categories=cats,
         groups=groups,
+        ai=_load_ai(raw.get("ai", {})),
     )

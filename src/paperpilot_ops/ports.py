@@ -4,13 +4,15 @@ Der Kern (Planen, Ausführen, Bericht, Evaluation) kennt nur diese Protokolle.
 Jede konkrete Technik ist ein austauschbarer Adapter:
 
 - `MailSource`: Mails seit dem letzten Lauf liefern. Adapter: `ImapSource`, `JsonSource`.
-- `Classifier`: Kategorie oder `unklar` bestimmen. Adapter: `RuleClassifier`, `LLMClassifier`.
+- `Classifier`: Kategorie oder `unklar` bestimmen. Adapter: `RuleClassifier`, `AIClassifier`, `PrefilteredClassifier`.
+- `LanguageModel`: ein Sprachmodell nach JSON fragen. Adapter: `OpenAICompatibleModel` (Mistral, Groq),
+  `AnthropicModel` (Claude), `FallbackModel` (Reserve-Kette).
 - `StorageTarget`: ablegen ohne Überschreiben, Übersichten, Lauf-Stand. Adapter: `LocalStore`, `MemoryStore`.
 - `CredentialStore`: Zugangsdaten lesen, nie in Dateien. Adapter: `EnvCredentialStore`,
   `KeyringCredentialStore`, `ChainedCredentialStore`.
 - `MutableCredentialStore`: zusätzlich speichern und löschen. Adapter: `KeyringCredentialStore`.
 
-Begründung und geplante Adapter (Google Drive, weitere KI-Anbieter):
+Begründung und geplante Adapter:
 docs/adr/0002-ports-und-adapter.md
 """
 
@@ -18,9 +20,9 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from datetime import datetime
-from typing import Protocol
+from typing import Any, Protocol
 
-from .models import Classification, Mail
+from .models import Classification, Completion, Mail
 
 
 class MailSource(Protocol):
@@ -33,6 +35,39 @@ class Classifier(Protocol):
     """Ordnet einer Mail genau ein Label zu. Bei jeder Unsicherheit oder Störung: `unklar`."""
 
     def classify(self, mail: Mail) -> Classification: ...
+
+
+class ProviderError(Exception):
+    """Ein KI-Anbieter hat keine verwertbare Antwort geliefert.
+
+    `kind` ist einer von `network`, `auth`, `rate_limit`, `server`, `refusal`, `invalid_response`.
+    Die Meldung enthält nie Mail-Inhalte und nie den API-Schlüssel.
+    """
+
+    def __init__(self, provider: str, kind: str, message: str):
+        super().__init__(f"{provider}: {message}")
+        self.provider = provider
+        self.kind = kind
+
+
+class LanguageModel(Protocol):
+    """Ein Sprachmodell, das auf eine Anfrage mit einem JSON-Objekt antwortet.
+
+    Vertrag (geprüft in tests/test_ai_models.py für jeden Adapter):
+
+    - `complete_json` liefert den Antworttext unverändert in `Completion.text`. Ob er gültiges JSON
+      nach `schema` ist, prüft der Aufrufer; Adapter dürfen `schema` nutzen, um die Ausgabe einzuschränken.
+    - Jede Störung (Netz, Anmeldung, Kontingent, Ablehnung, kaputte Hülle) wird zu `ProviderError`.
+      Andere Ausnahmen verlassen den Adapter nicht.
+    - Adapter protokollieren keine Inhalte und geben den Schlüssel nie in Meldungen oder `repr()` preis.
+    """
+
+    @property
+    def name(self) -> str:
+        """Kurzname für Bericht und Begründung, z. B. `mistral` oder `groq → mistral`."""
+        ...
+
+    def complete_json(self, system: str, user: str, schema: dict[str, Any]) -> Completion: ...
 
 
 class StorageTarget(Protocol):

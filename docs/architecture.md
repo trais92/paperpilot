@@ -17,15 +17,20 @@ flowchart LR
         RUN --> REP[render_report]
     end
     subgraph Adapter_ki[Klassifizierer]
-        RC[RuleClassifier]
-        LC[LLMClassifier]
+        PF[PrefilteredClassifier] --> RC[RuleClassifier<br/>Vorfilter]
+        PF --> AI[AIClassifier]
+    end
+    subgraph Adapter_lm[Sprachmodelle]
+        FB[FallbackModel] --> OC[OpenAICompatibleModel<br/>Groq, Mistral]
+        FB --> AN[AnthropicModel<br/>Claude]
     end
     subgraph Adapter_aus[Ablageziel]
         LS[LocalStore]
         MS[MemoryStore]
     end
     IMAP & JSON -- MailSource --> PL
-    PL -- Classifier --> RC & LC
+    PL -- Classifier --> PF
+    AI -- LanguageModel --> FB
     RUN -- StorageTarget --> LS & MS
     ENV[EnvCredentialStore] & KR[KeyringCredentialStore] -- CredentialStore --> IMAP
 ```
@@ -33,7 +38,8 @@ flowchart LR
 | Port (`ports.py`) | Vertrag | Adapter | Geplant |
 |---|---|---|---|
 | `MailSource` | Mails neuer als `since`, Postfach bleibt unverändert | `ImapSource`, `JsonSource` | – |
-| `Classifier` | genau ein Label, bei Unsicherheit `unklar` | `RuleClassifier`, `LLMClassifier` | KI-Analyse mit Feldern ([ADR 0003](adr/0003-ki-fest-eingebaut.md)) |
+| `Classifier` | genau ein Label, bei Unsicherheit `unklar` | `PrefilteredClassifier`, `AIClassifier`, `RuleClassifier` | Felder auslesen (Roadmap 4) |
+| `LanguageModel` | Antworttext unverändert, jede Störung als `ProviderError`, Schlüssel nie in Meldungen | `OpenAICompatibleModel`, `AnthropicModel`, `FallbackModel` ([ADR 0007](adr/0007-ki-schicht-mit-austauschbaren-modellen.md)) | – |
 | `StorageTarget` | nie überschreiben, Duplikat-Index, Übersichten, Lauf-Stand geht nie zurück | `LocalStore`, `MemoryStore` | Google Drive ([ADR 0005](adr/0005-ablage-ordnerstruktur-lokal-oder-drive.md)) |
 | `CredentialStore` | Zugangsdaten lesen, nie in Dateien oder Logs | `EnvCredentialStore`, `KeyringCredentialStore`, `ChainedCredentialStore` | – |
 | `MutableCredentialStore` | zusätzlich speichern und löschen, nur für `login`/`logout` | `KeyringCredentialStore` ([ADR 0004](adr/0004-zugangsdaten-im-schluesselbund.md)) | – |
@@ -82,8 +88,21 @@ Jede Quelle implementiert `fetch(since) -> Iterator[Mail]` (Protokoll `MailSourc
 ### `classify.py`
 Protokoll `Classifier.classify(mail) -> Classification`.
 
-- **`RuleClassifier`** berechnet pro Kategorie einen Score aus Stichwort-Treffern (Betreff ×2, Text ×1) und Absender-Treffern (×3). Kategorien mit `group` zählen nur, wenn die Gruppe **und** eigene Stichwörter treffen. Trifft nur die Gruppe, entsteht `<gruppe>/sonstiges`. Liegt der beste Score unter `min_score`, wird `unklar` zurückgegeben. Bei Gleichstand gewinnt das Label, das gemeldet werden muss (lieber einmal zu viel melden). Details: [configuration.md](configuration.md#scoring).
-- **`LLMClassifier`** (optional) ruft die Claude API mit `output_config.format` (JSON-Schema mit `enum` der erlaubten Labels) auf. Jede Störung (Netzwerk, Auth, Ablehnung, kein JSON) führt zu `unklar`, also zur menschlichen Prüfung. Der Client wird injiziert, deshalb lässt er sich ohne Netz testen.
+- **`RuleClassifier`** berechnet pro Kategorie einen Score aus Stichwort-Treffern (Betreff ×2, Text ×1) und Absender-Treffern (×3). Kategorien mit `group` zählen nur, wenn die Gruppe **und** eigene Stichwörter treffen. Trifft nur die Gruppe, entsteht `<gruppe>/sonstiges`. Liegt der beste Score unter `min_score`, wird `unklar` zurückgegeben. Bei Gleichstand gewinnt das Label, das gemeldet werden muss (lieber einmal zu viel melden). Details: [configuration.md](configuration.md#scoring-regel-klassifizierer).
+Seit [ADR 0003](adr/0003-ki-fest-eingebaut.md) ist der Regel-Klassifizierer Vorfilter, Vergleichswert und Demo-Klassifizierer.
+
+### `ai/`
+Die KI-Schicht ([ADR 0007](adr/0007-ki-schicht-mit-austauschbaren-modellen.md)).
+
+- **`PrefilteredClassifier`** fragt zuerst die Regeln. Ordnen sie die Mail einer Kategorie mit `action = "ignore"` zu (Werbung), ist sie fertig. Alles andere geht an den `AIClassifier`.
+- **`AIClassifier`** baut die Anfrage: Systemprompt mit festen Regeln, die erlaubten Kategorien mit ihrer `description`, Absender, Betreff und höchstens 4000 Zeichen Text zwischen festen Begrenzern. Die Antwort wird streng geprüft (JSON-Objekt, Label aus der Liste, Sicherheit 0 bis 1). Abweichungen, Störungen und Antworten unter `min_confidence` ergeben `unklar` mit Grund.
+- **`OpenAICompatibleModel`** spricht Groq und Mistral über `urllib` an (nur `https`), mit Mindestabstand zwischen Anfragen und einmaligem Warten bei HTTP 429. Der HTTP-Baustein (`ai/http.py`) ist austauschbar, Tests nutzen eine Attrappe.
+- **`AnthropicModel`** nutzt das offizielle SDK mit strukturierter Ausgabe; das Paket wird erst beim Gebrauch geladen.
+- **`FallbackModel`** fragt den nächsten Anbieter nur bei `ProviderError`, nicht bei inhaltlich falscher Antwort.
+- **`providers.py`** kennt Adressen und Standardmodelle und baut die Kette aus `[ai]` und den gespeicherten Schlüsseln.
+
+### `composition.py`
+Kompositionswurzel: `make_classifier()` verbindet Ports und Adapter. Die CLI holt sich hier ihre Objekte; der Kern bleibt frei von konkreten Adaptern (Regel 8).
 
 ### `naming.py`
 - `slug()` entfernt Gender-Klammern wie `(m/w/d)`, ersetzt Umlaute, filtert Stoppwörter und nimmt höchstens 5 Wörter.
@@ -139,7 +158,7 @@ Die wichtigsten Entscheidungen sind als [ADRs](adr/README.md) mit Alternativen b
 | Entscheidung | Begründung | Abwägung |
 |---|---|---|
 | Keine Laufzeit-Abhängigkeiten | Sofort lauffähig, kleine Angriffsfläche, leicht zu prüfen | Kein PDF-Rendering, Mails werden als Markdown abgelegt |
-| Regeln vor LLM (Stand 0.1.0, abgelöst durch [ADR 0003](adr/0003-ki-fest-eingebaut.md)) | Erklärbar, kostenlos, offline, deterministisch testbar | Geringerer Recall bei ungewöhnlichen Formulierungen |
+| KI sortiert, Regeln filtern vor ([ADR 0003](adr/0003-ki-fest-eingebaut.md), [0007](adr/0007-ki-schicht-mit-austauschbaren-modellen.md)) | Versteht Formulierungen ohne Stichwort, eigene Kategorien per Beschreibung | Mail-Inhalte gehen an einen Anbieter; Antworten müssen geprüft werden |
 | Planen und Ausführen getrennt | Trockenlauf ohne Sonderlogik, gut testbar | Plan hält Dateiinhalte im Speicher (bei sehr großen Anhängen relevant) |
 | `unklar` statt Raten | Ein falsch abgelegtes Dokument ist teurer als eine Rückfrage | Mehr manuelle Prüfung (11,5 % im Testset) |
 | Dateisystem statt Drive-API (Stand 0.1.0, Drive-Adapter geplant in [ADR 0005](adr/0005-ablage-ordnerstruktur-lokal-oder-drive.md)) | Funktioniert mit jedem Sync-Client, keine OAuth-Einrichtung | Keine Drive-spezifischen Funktionen (Freigaben, Labels) |

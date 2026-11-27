@@ -283,3 +283,16 @@ def test_login_without_keyring_explains_alternative(monkeypatch, capsys):
     assert cli.main(["login", "--status"]) == 2
     assert cli.main(["logout"]) == 2
     assert "Umgebungsvariablen" in capsys.readouterr().err
+
+
+def test_login_ai_stores_api_key(vault, monkeypatch, capsys):
+    monkeypatch.setattr("getpass.getpass", lambda *_: "  gsk-schluessel  ")
+    assert cli.main(["login", "--ai", "groq"]) == 0
+    assert vault.get("groq_api_key") == "gsk-schluessel"
+    assert "gsk-schluessel" not in capsys.readouterr().out
+
+
+def test_login_ai_empty_key_stores_nothing(vault, monkeypatch):
+    monkeypatch.setattr("getpass.getpass", lambda *_: "")
+    assert cli.main(["login", "--ai", "mistral"]) == 1
+    assert vault.get("mistral_api_key") is None

@@ -125,7 +125,7 @@ def test_make_classifier_ai_end_to_end_with_fake_transport(rules, make_mail):
     transport = FakeTransport(chat_response('{"label": "privat/steuern", "confidence": 0.8, "reason": "Finanzamt"}'))
     creds = EnvCredentialStore({"PAPERPILOT_GROQ_API_KEY": "k"})
     clf = make_classifier("ai", rules, creds, transport)
-    assert describe_classifier(clf) == "KI: groq (Vorfilter: Regeln)"
+    assert describe_classifier(clf) == "KI: groq → groq-reserve (Vorfilter: Regeln)"
     assert clf.classify(make_mail("Bescheid", "vom Amt")).label == "privat/steuern"
 
 

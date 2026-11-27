@@ -4,6 +4,7 @@
 - Datum: 2026-11-27
 - Ergänzt [0003](0003-ki-fest-eingebaut.md); ersetzt dort die Anbieterwahl (Mistral als Standard, Groq als Reserve)
 - Ergänzt durch [0011](0011-angaben-aus-mail-und-pdf.md): Text aus PDF-Anhängen geht mit an die KI
+- Ergänzt durch [0012](0012-zweites-groq-modell-als-reserve.md): zweites Groq-Modell als Reserve mit demselben Schlüssel
 
 ## Kontext
 

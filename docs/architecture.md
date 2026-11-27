@@ -100,7 +100,7 @@ Die KI-Schicht ([ADR 0007](adr/0007-ki-schicht-mit-austauschbaren-modellen.md)).
 - **`OpenAICompatibleModel`** spricht OpenAI-kompatible Anbieter (heute Groq) über `urllib` an (nur `https`), mit Mindestabstand zwischen Anfragen und einmaligem Warten bei HTTP 429. Der HTTP-Baustein (`ai/http.py`) ist austauschbar, Tests nutzen eine Attrappe.
 - **`AnthropicModel`** nutzt das offizielle SDK mit strukturierter Ausgabe; das Paket wird erst beim Gebrauch geladen.
 - **`FallbackModel`** fragt den nächsten Anbieter nur bei `ProviderError`, nicht bei inhaltlich falscher Antwort.
-- **`providers.py`** kennt Adressen und Standardmodelle und baut die Kette aus `[ai]` und den gespeicherten Schlüsseln.
+- **`providers.py`** kennt Adressen, Standard- und Reservemodelle und baut die Kette aus `[ai]` und den gespeicherten Schlüsseln. Ein Anbieter mit `reserve_model` steht mit zwei Modellen und demselben Schlüssel in der Kette, z. B. `groq → groq-reserve` ([ADR 0012](adr/0012-zweites-groq-modell-als-reserve.md)).
 
 ### `fields.py` und `pdftext.py`
 `fields.py` prüft Betrag, Belegdatum, Nummer und Frist (aus der KI-Antwort und aus Korrekturen im Browser) und liefert `models.Fields`; Ungültiges bleibt leer. `pdftext.py` liest Text aus PDF-Anhängen mit dem optionalen Paket `pypdf` und unterscheidet „kein PDF bzw. Paket fehlt“ (`None`) von „PDF ohne Text“ (`""`).

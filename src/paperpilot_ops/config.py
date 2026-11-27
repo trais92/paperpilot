@@ -42,6 +42,7 @@ class AISettings:
     min_confidence: float = 0.6  # darunter wird `unklar` vergeben
     models: dict[str, str] = field(default_factory=dict)  # optional: anderes Modell je Anbieter
     read_pdfs: bool = True  # Text aus PDF-Anhängen mitsenden (für Betrag, Nummer, Frist)
+    reserve_models: bool = True  # zweites Gratis-Modell desselben Anbieters als Reserve (ADR 0012)
 
     @property
     def chain(self) -> tuple[str, ...]:
@@ -57,6 +58,7 @@ def _load_ai(raw: dict[str, Any]) -> AISettings:
         min_confidence=float(raw.get("min_confidence", default.min_confidence)),
         models=dict(raw.get("models", {})),
         read_pdfs=bool(raw.get("read_pdfs", default.read_pdfs)),
+        reserve_models=bool(raw.get("reserve_models", default.reserve_models)),
     )
     unknown = [p for p in (*settings.chain, *settings.models) if p not in AI_PROVIDERS]
     if unknown:

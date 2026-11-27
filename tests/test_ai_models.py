@@ -260,13 +260,36 @@ def test_build_chain_and_model_override(monkeypatch):
     creds = EnvCredentialStore({"PAPERPILOT_GROQ_API_KEY": KEY, "PAPERPILOT_CLAUDE_API_KEY": KEY})
     settings = AISettings(provider="groq", fallback=("claude",), models={"groq": "anderes-modell"})
     model = build_language_model(settings, creds)
-    assert isinstance(model, FallbackModel) and model.name == "groq → claude"
+    assert isinstance(model, FallbackModel) and model.name == "groq → groq-reserve → claude"
     assert "anderes-modell" in repr(model)
 
 
-def test_default_settings_use_only_free_groq():
+def test_default_settings_use_only_free_groq_with_reserve_model():
     model = build_language_model(AISettings(), EnvCredentialStore({"PAPERPILOT_GROQ_API_KEY": KEY}))
-    assert model.name == "groq" and "openai/gpt-oss-20b" in repr(model)
+    assert model.name == "groq → groq-reserve"
+    assert "openai/gpt-oss-20b" in repr(model) and "openai/gpt-oss-120b" in repr(model)
+
+
+def test_reserve_model_can_be_switched_off_and_is_never_doubled():
+    creds = EnvCredentialStore({"PAPERPILOT_GROQ_API_KEY": KEY})
+    assert build_language_model(AISettings(reserve_models=False), creds).name == "groq"
+    same = AISettings(models={"groq": "openai/gpt-oss-120b"})
+    assert build_language_model(same, creds).name == "groq"
+
+
+def test_reserve_model_answers_when_daily_quota_is_used_up():
+    seen = []
+
+    def transport(request):
+        model = json.loads(request.body)["model"]
+        seen.append(model)
+        if model == "openai/gpt-oss-20b":
+            return chat_response("", status=429, headers={"retry-after": "3600"})
+        return chat_response(ANSWER)
+
+    model = build_language_model(AISettings(), EnvCredentialStore({"PAPERPILOT_GROQ_API_KEY": KEY}), transport)
+    completion = model.complete_json("s", "u", {})
+    assert completion.provider == "groq-reserve" and seen == ["openai/gpt-oss-20b", "openai/gpt-oss-120b"]
 
 
 def test_build_claude_with_injected_sdk(monkeypatch):
@@ -290,3 +313,12 @@ def test_build_without_any_key_explains_login():
 def test_urllib_transport_maps_unreachable_host_to_transport_error():
     with pytest.raises(TransportError):
         urllib_transport(HttpRequest("POST", "https://127.0.0.1:9/v1", {}, b"{}", timeout=0.5))
+
+
+def test_reserve_models_setting_is_loaded(tmp_path):
+    from paperpilot_ops.config import load_rules
+
+    assert load_rules().ai.reserve_models is True
+    path = tmp_path / "rules.toml"
+    path.write_text("[ai]\nreserve_models = false\n", "utf-8")
+    assert load_rules(path).ai.reserve_models is False

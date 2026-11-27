@@ -2,6 +2,10 @@
 
 ## Unveröffentlicht
 
+### Zweites Groq-Modell als Reserve
+
+- Ist das Tageskontingent von `openai/gpt-oss-20b` erschöpft, fragt PaperPilot mit demselben Schlüssel `openai/gpt-oss-120b` (`groq-reserve`), erst danach Anbieter aus `fallback`. Abschaltbar mit `[ai] reserve_models = false`. ADR 0012.
+
 ### Claude als kostenpflichtig gekennzeichnet
 
 - Hilfe von `login --ai`, Anmeldung, jeder Lauf mit gespeichertem Claude-Schlüssel, Einrichtungsassistent, Standardregeln und Doku weisen deutlich auf die Kosten hin (`PAID_PROVIDERS`).

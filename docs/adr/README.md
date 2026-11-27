@@ -15,6 +15,7 @@ Jede Entscheidung, die die Struktur von PaperPilot prägt, steht hier als kurzes
 | [0009](0009-bericht-mit-freigabe-im-browser.md) | Bericht mit Freigabe als lokale Seite ohne JavaScript | Akzeptiert | erledigt |
 | [0010](0010-persoenliche-einstellungen.md) | Einrichtungsassistent speichert persönliche Einstellungen getrennt von den Regeln | Akzeptiert | erledigt |
 | [0011](0011-angaben-aus-mail-und-pdf.md) | Angaben aus Mail und PDF auslesen, einzeln prüfen, Scans an den Menschen | Akzeptiert | erledigt |
+| [0012](0012-zweites-groq-modell-als-reserve.md) | Zweites Groq-Modell als Reserve mit demselben Schlüssel | Akzeptiert | erledigt |
 
 ## Vorlage
 

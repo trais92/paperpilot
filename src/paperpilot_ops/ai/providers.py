@@ -21,14 +21,21 @@ class OpenAICompatibleProvider:
     base_url: str
     default_model: str
     min_interval: float  # Sekunden zwischen zwei Anfragen, passend zum Gratis-Kontingent
+    reserve_model: str = ""  # zweites Modell desselben Anbieters mit eigenem Kontingent (ADR 0012)
+
+
+RESERVE_SUFFIX = "-reserve"
 
 
 # Aufgenommen werden nur Anbieter, die ohne Kreditkarte und ohne Abrechnung nutzbar sind
 # (Kriterien und geprüfte Kandidaten: docs/ai-providers.md). Claude ist die bewusste Ausnahme:
 # nicht voreingestellt, nur mit eigenem, kostenpflichtigem Schlüssel.
 OPENAI_COMPATIBLE: dict[str, OpenAICompatibleProvider] = {
-    # Gratis-Tarif: 30 Anfragen pro Minute, 1000 pro Tag für dieses Modell.
-    "groq": OpenAICompatibleProvider("https://api.groq.com/openai/v1", "openai/gpt-oss-20b", 2.0),
+    # Gratis-Tarif: 30 Anfragen pro Minute, 1000 pro Tag, je Modell gezählt. Ist das Tageskontingent
+    # von gpt-oss-20b erschöpft, antwortet gpt-oss-120b mit demselben Schlüssel (ADR 0012).
+    "groq": OpenAICompatibleProvider(
+        "https://api.groq.com/openai/v1", "openai/gpt-oss-20b", 2.0, reserve_model="openai/gpt-oss-120b"
+    ),
 }
 
 
@@ -66,15 +73,15 @@ def build_language_model(
             models.append(AnthropicModel(api_key, model_name or DEFAULT_CLAUDE_MODEL))
             continue
         spec = OPENAI_COMPATIBLE[provider]
-        models.append(
+        main = model_name or spec.default_model
+        names = [(provider, main)]
+        if settings.reserve_models and spec.reserve_model and spec.reserve_model != main:
+            names.append((provider + RESERVE_SUFFIX, spec.reserve_model))
+        models.extend(
             OpenAICompatibleModel(
-                provider,
-                spec.base_url,
-                model_name or spec.default_model,
-                api_key,
-                transport=transport,
-                min_interval=spec.min_interval,
+                name, spec.base_url, model, api_key, transport=transport, min_interval=spec.min_interval
             )
+            for name, model in names
         )
     if not models:
         first = settings.chain[0]

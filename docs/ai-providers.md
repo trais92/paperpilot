@@ -10,7 +10,7 @@ Voreingestellt wird nur, was **ohne Kreditkarte und ohne Abrechnung** dauerhaft 
 
 | Anbieter | Rolle | Kosten | Modell (Standard) | Schnittstelle |
 |---|---|---|---|---|
-| Groq | voreingestellt | kostenloser Tarif mit Kontingent, keine Kreditkarte | `openai/gpt-oss-20b` | OpenAI-kompatibel, ohne Zusatzpaket |
+| Groq | voreingestellt | kostenloser Tarif mit Kontingent, keine Kreditkarte | `openai/gpt-oss-20b`, Reserve `openai/gpt-oss-120b` | OpenAI-kompatibel, ohne Zusatzpaket |
 | Claude (Anthropic) | optional | kostenpflichtig, eigener Schlüssel | `claude-opus-5-5` | offizielles SDK, Extra `[llm]` |
 
 Die Reihenfolge steht in der Konfiguration (`[ai]`, siehe [configuration.md](configuration.md#ai)). Wer einen (kostenpflichtigen) Claude-Schlüssel hat, kann ihn mit `fallback = ["claude"]` als Reserve eintragen. Anbieter ohne gespeicherten Schlüssel werden übersprungen. Antwortet kein Anbieter, landet die Mail als `unklar` im Eingang und wird beim nächsten Lauf erneut versucht.
@@ -27,7 +27,7 @@ Stand 27.11.2026, jeweils in den offiziellen Unterlagen geprüft:
 | OpenRouter (`:free`-Modelle) | vorgemerkt, nicht aufgenommen | ohne Guthaben nur 50 Anfragen pro Tag; ob die Gratis-Endpunkte Daten zum Training nutzen, hängt vom jeweiligen Betreiber ab und ist nicht zugesichert |
 | Google Gemini | nicht aufgenommen | im Gratis-Tarif Nutzung zum Training und menschliche Prüfung; für Angebote an Nutzer in der EU verlangen die Bedingungen den Bezahltarif |
 
-Ein zweiter Gratis-Anbieter als Reserve kommt dazu, sobald einer beide Kriterien erfüllt. Die Schicht ist dafür vorbereitet: Ein OpenAI-kompatibler Anbieter ist ein Eintrag in `ai/providers.py`.
+Bis dahin dient ein zweites Groq-Modell als Reserve (siehe [Kontingente](#kontingente)). Ein zweiter Gratis-Anbieter kommt dazu, sobald einer beide Kriterien erfüllt. Die Schicht ist dafür vorbereitet: Ein OpenAI-kompatibler Anbieter ist ein Eintrag in `ai/providers.py`.
 
 ## Einrichten
 
@@ -48,7 +48,9 @@ Pro Mail ein Aufruf mit der Liste der erlaubten Kategorien samt Beschreibung, Ab
 
 ## Kontingente
 
-Der kostenlose Groq-Tarif erlaubt für `openai/gpt-oss-20b` 30 Anfragen pro Minute und 1000 pro Tag. PaperPilot hält deshalb mindestens 2 Sekunden Abstand zwischen zwei Anfragen, wartet bei „zu viele Anfragen“ (HTTP 429) einmal so lange, wie der Anbieter mit `Retry-After` verlangt (höchstens 20 s), und fragt danach die Reserve, falls eine eingetragen ist. Bei 1000 Anfragen pro Tag reicht der Tarif für die allermeisten privaten Postfächer, zumal Werbung und Duplikate nicht mitzählen.
+Der kostenlose Groq-Tarif erlaubt für `openai/gpt-oss-20b` 30 Anfragen pro Minute und 1000 pro Tag. PaperPilot hält deshalb mindestens 2 Sekunden Abstand zwischen zwei Anfragen, wartet bei „zu viele Anfragen“ (HTTP 429) einmal so lange, wie der Anbieter mit `Retry-After` verlangt (höchstens 20 s), und fragt danach die Reserve. Bei 1000 Anfragen pro Tag reicht der Tarif für die allermeisten privaten Postfächer, zumal Werbung und Duplikate nicht mitzählen.
+
+Groq führt die Kontingente je Modell. Ist das Tageskontingent von `openai/gpt-oss-20b` erschöpft, fragt PaperPilot deshalb mit demselben Schlüssel `openai/gpt-oss-120b` (in der Begründung als `groq-reserve` zu sehen), erst danach Anbieter aus `fallback`. Das verdoppelt das kostenlose Kontingent etwa, solange Groq die Modelle getrennt zählt; zugesichert ist das nicht. Abschalten mit `[ai] reserve_models = false` ([ADR 0012](adr/0012-zweites-groq-modell-als-reserve.md)).
 
 ## Quellen
 

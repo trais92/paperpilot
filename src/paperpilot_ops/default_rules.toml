@@ -28,6 +28,9 @@ min_confidence = 0.6
 # Text aus PDF-Anhängen mitsenden, damit die KI Betrag, Nummer und Frist auch aus der Rechnung
 # liest (höchstens 3000 Zeichen, braucht pip install ".[pdf]"). false: Anhänge bleiben auf dem Rechner.
 read_pdfs = true
+# Groq zählt das Tageskontingent je Modell. Ist es für das erste Modell erschöpft, fragt PaperPilot
+# mit demselben Schlüssel ein zweites kostenloses Groq-Modell (openai/gpt-oss-120b). false: nur eines.
+reserve_models = true
 # Optional ein anderes Modell je Anbieter:
 # [ai.models]
 # groq = "openai/gpt-oss-20b"

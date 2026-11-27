@@ -55,6 +55,7 @@ Stichwörter werden kleingeschrieben verglichen und als Teilstring gesucht (`"te
 | `provider` | String | `"groq"` | Anbieter, der zuerst gefragt wird: `groq` (kostenlos) oder `claude` (**kostenpflichtig**, eigener Schlüssel) |
 | `fallback` | Liste | `[]` | Reserve, der Reihe nach. Anbieter ohne Schlüssel werden übersprungen |
 | `min_confidence` | Zahl 0–1 | `0.6` | Darunter wird `unklar` vergeben |
+| `reserve_models` | Bool | `true` | Ist das Kontingent des ersten Modells erschöpft, fragt PaperPilot mit demselben Schlüssel ein zweites kostenloses Modell des Anbieters (Groq: `openai/gpt-oss-120b`, [ADR 0012](adr/0012-zweites-groq-modell-als-reserve.md)) |
 | `read_pdfs` | Bool | `true` | Text von PDF-Anhängen mitsenden (braucht `pip install ".[pdf]"`); `false` lässt Anhänge auf dem Rechner |
 | `[ai.models]` | Tabelle | – | Optional ein anderes Modell je Anbieter, z. B. `groq = "openai/gpt-oss-120b"` |
 

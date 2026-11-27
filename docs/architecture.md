@@ -27,7 +27,7 @@ flowchart LR
     IMAP & JSON -- MailSource --> PL
     PL -- Classifier --> RC & LC
     RUN -- StorageTarget --> LS & MS
-    ENV[EnvCredentialStore] -- CredentialStore --> IMAP
+    ENV[EnvCredentialStore] & KR[KeyringCredentialStore] -- CredentialStore --> IMAP
 ```
 
 | Port (`ports.py`) | Vertrag | Adapter | Geplant |
@@ -35,7 +35,8 @@ flowchart LR
 | `MailSource` | Mails neuer als `since`, Postfach bleibt unverändert | `ImapSource`, `JsonSource` | – |
 | `Classifier` | genau ein Label, bei Unsicherheit `unklar` | `RuleClassifier`, `LLMClassifier` | KI-Analyse mit Feldern ([ADR 0003](adr/0003-ki-fest-eingebaut.md)) |
 | `StorageTarget` | nie überschreiben, Duplikat-Index, Übersichten, Lauf-Stand geht nie zurück | `LocalStore`, `MemoryStore` | Google Drive ([ADR 0005](adr/0005-ablage-ordnerstruktur-lokal-oder-drive.md)) |
-| `CredentialStore` | Zugangsdaten lesen, nie in Dateien oder Logs | `EnvCredentialStore` | Schlüsselbund ([ADR 0004](adr/0004-zugangsdaten-im-schluesselbund.md)) |
+| `CredentialStore` | Zugangsdaten lesen, nie in Dateien oder Logs | `EnvCredentialStore`, `KeyringCredentialStore`, `ChainedCredentialStore` | – |
+| `MutableCredentialStore` | zusätzlich speichern und löschen, nur für `login`/`logout` | `KeyringCredentialStore` ([ADR 0004](adr/0004-zugangsdaten-im-schluesselbund.md)) | – |
 
 Jeder Vertrag steht im Docstring des Ports. Für `StorageTarget` prüft [`tests/test_storage_contract.py`](../tests/test_storage_contract.py) jeden Adapter mit denselben Tests; ein neuer Adapter wird dort nur eingetragen.
 
@@ -96,7 +97,13 @@ Zerlegt den Text in Sätze (Punkte in Datumsangaben bleiben erhalten) und sucht 
 Die vier Protokolle oben. Keine Logik, nur Verträge.
 
 ### `credentials.py`
-`EnvCredentialStore` liest die fest vereinbarten Schlüssel (`imap_host`, `imap_user`, `imap_password`) aus Umgebungsvariablen. Unbekannte Schlüssel lösen `KeyError` aus. Fehlende Werte fragt die CLI ab, ohne sie zu speichern.
+Alle Adapter kennen nur die fest vereinbarten Schlüssel aus `KEYS` (`imap_host`, `imap_user`, `imap_password`). Ein unbekannter Schlüssel löst `KeyError` aus.
+
+- `EnvCredentialStore` liest Umgebungsvariablen (`PAPERPILOT_IMAP_*`) und speichert nichts.
+- `KeyringCredentialStore` nutzt den Schlüsselbund des Betriebssystems über das optionale Paket `keyring` (Dienstname `paperpilot`). Fehlt das Paket oder gibt es auf dem System keinen Schlüsselbund, entsteht ein `CredentialStoreError` mit Hinweis. Fehler des Betriebssystems werden ohne den ursprünglichen Text weitergegeben, weil der einen Wert enthalten könnte.
+- `ChainedCredentialStore` fragt mehrere Adapter nacheinander. `default_credential_store()` verkettet Umgebung und Schlüsselbund, sodass Umgebungsvariablen bewusst übersteuern können.
+
+`paperpilot login` fragt die Werte ab, meldet sich zur Probe beim Postfach an und speichert erst danach. `paperpilot logout` löscht alle Einträge. Beim normalen Lauf werden fehlende Werte abgefragt, aber nicht gespeichert. Das Sicherheitskonzept steht in [security.md](security.md).
 
 ### `store.py`
 - `LocalStore` und `MemoryStore` erfüllen den Port `StorageTarget`.
@@ -123,7 +130,7 @@ Die vier Protokolle oben. Keine Logik, nur Verträge.
 Siehe [evaluation.md](evaluation.md).
 
 ### `cli.py`
-`argparse` mit den Unterbefehlen `demo`, `run`, `eval`, `init`. Demo- und Testdaten liegen als Paketdaten in `paperpilot_ops/data/` und funktionieren deshalb auch nach `pip install`.
+`argparse` mit den Unterbefehlen `demo`, `run`, `eval`, `init`, `login`, `logout`. Demo- und Testdaten liegen als Paketdaten in `paperpilot_ops/data/` und funktionieren deshalb auch nach `pip install`.
 
 ## Designentscheidungen
 

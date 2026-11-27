@@ -12,9 +12,9 @@ Jeder Schritt ist ein eigener Pull Request mit Tests, Doku und, wo nötig, einem
 
 ## Phase 1: KI und Ablage als Kern
 
-| # | Vorhaben | Fertig, wenn |
-|---|---|---|
-| 1 | Zugangsdaten im Schlüsselbund ([ADR 0004](adr/0004-zugangsdaten-im-schluesselbund.md)) | App-Passwort einmal eingeben, der nächste Lauf fragt nicht; Befehl zum Löschen |
+| # | Vorhaben | Fertig, wenn | Stand |
+|---|---|---|---|
+| 1 | Zugangsdaten im Schlüsselbund ([ADR 0004](adr/0004-zugangsdaten-im-schluesselbund.md)) | App-Passwort einmal eingeben, der nächste Lauf fragt nicht; Befehl zum Löschen | erledigt |
 | 2 | KI-Anbindung: Mistral, Groq als Reserve, Claude ([ADR 0003](adr/0003-ki-fest-eingebaut.md)) | Eine Mail ergibt Kategorie oder `unklar`; Gratis-Anbieter ohne Zusatzpaket; Antworten werden gegen erlaubte Kategorien geprüft |
 | 3 | Wählbare Kategorien, auch eigene, mit Ordnerstruktur und Übersichtstabelle ([ADR 0005](adr/0005-ablage-ordnerstruktur-lokal-oder-drive.md)) | Demo-Lauf legt nur die gewählten Ordner an und füllt deren Übersicht |
 | 4 | KI liest Felder aus Mail und PDF-Anhang aus (Betrag, Datum, Nummer, Fristen) | Felder landen in der Übersicht; gescannte PDFs ohne Text gehen in den Eingang |

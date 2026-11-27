@@ -3,14 +3,14 @@
 Der Kern (Planen, Ausführen, Bericht, Evaluation) kennt nur diese Protokolle.
 Jede konkrete Technik ist ein austauschbarer Adapter:
 
-| Port              | Aufgabe                                   | Adapter heute                         |
-|-------------------|-------------------------------------------|---------------------------------------|
-| `MailSource`      | Mails seit dem letzten Lauf liefern        | `ImapSource`, `JsonSource`            |
-| `Classifier`      | Kategorie oder `unklar` bestimmen          | `RuleClassifier`, `LLMClassifier`     |
-| `StorageTarget`   | Ablegen ohne Überschreiben, Lauf-Stand     | `LocalStore`, `MemoryStore`           |
-| `CredentialStore` | Zugangsdaten lesen, nie in Dateien         | `EnvCredentialStore`                  |
+- `MailSource`: Mails seit dem letzten Lauf liefern. Adapter: `ImapSource`, `JsonSource`.
+- `Classifier`: Kategorie oder `unklar` bestimmen. Adapter: `RuleClassifier`, `LLMClassifier`.
+- `StorageTarget`: ablegen ohne Überschreiben, Übersichten, Lauf-Stand. Adapter: `LocalStore`, `MemoryStore`.
+- `CredentialStore`: Zugangsdaten lesen, nie in Dateien. Adapter: `EnvCredentialStore`,
+  `KeyringCredentialStore`, `ChainedCredentialStore`.
+- `MutableCredentialStore`: zusätzlich speichern und löschen. Adapter: `KeyringCredentialStore`.
 
-Begründung und geplante Adapter (Google Drive, Schlüsselbund, weitere KI-Anbieter):
+Begründung und geplante Adapter (Google Drive, weitere KI-Anbieter):
 docs/adr/0002-ports-und-adapter.md
 """
 
@@ -76,3 +76,19 @@ class CredentialStore(Protocol):
     """
 
     def get(self, key: str) -> str | None: ...
+
+
+class MutableCredentialStore(CredentialStore, Protocol):
+    """Ein `CredentialStore`, der Werte dauerhaft speichern und löschen kann.
+
+    Erlaubt ist das nur für den Schlüsselbund des Betriebssystems (docs/adr/0004-zugangsdaten-im-schluesselbund.md).
+    Nur Befehle, die ein Mensch ausdrücklich aufruft (`paperpilot login`, `paperpilot logout`), nutzen diesen Port;
+    der Kern liest ausschließlich über `CredentialStore`.
+
+    - `set` lehnt leere Werte ab (`ValueError`).
+    - `delete` liefert `True`, wenn ein Eintrag gelöscht wurde, `False`, wenn keiner da war.
+    """
+
+    def set(self, key: str, value: str) -> None: ...
+
+    def delete(self, key: str) -> bool: ...

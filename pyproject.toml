@@ -13,6 +13,7 @@ dependencies = []
 
 [project.optional-dependencies]
 llm = ["anthropic>=2.0"]
+keyring = ["keyring>=25"]
 dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.6", "mypy>=1.10"]
 
 [project.scripts]
@@ -34,7 +35,7 @@ strict = true
 files = ["src"]
 
 [[tool.mypy.overrides]]
-module = ["anthropic", "anthropic.*"]
+module = ["anthropic", "anthropic.*", "keyring", "keyring.*"]
 ignore_missing_imports = true
 
 [tool.coverage.report]

@@ -172,7 +172,9 @@ paperpilot run --source imap --rules rules.toml --target "G:/Meine Ablage/Persö
 paperpilot run --source imap --rules rules.toml --target "G:/Meine Ablage/Persönlich" --apply   # ausführen
 ```
 
-- **Gmail:** IMAP aktivieren und ein App-Passwort anlegen. Benutzer und Passwort kommen aus `PAPERPILOT_IMAP_USER` und `PAPERPILOT_IMAP_PASSWORD` oder werden abgefragt. Sie werden **nie gespeichert**. Anderer Server: `PAPERPILOT_IMAP_HOST`.
+- **Gmail:** IMAP aktivieren und ein App-Passwort anlegen.
+- **Zugang einmal speichern:** `pip install ".[keyring]"` und `paperpilot login`. PaperPilot meldet sich zur Probe an und legt Server, Benutzer und App-Passwort im Schlüsselbund des Betriebssystems ab (Windows-Anmeldeinformationsverwaltung, macOS-Schlüsselbund, Secret Service unter Linux), nie in einer Datei. `paperpilot login --status` zeigt, was gespeichert ist, `paperpilot logout` löscht alles wieder.
+- **Ohne Schlüsselbund** (Server, CI): `PAPERPILOT_IMAP_HOST`, `PAPERPILOT_IMAP_USER` und `PAPERPILOT_IMAP_PASSWORD` setzen. Umgebungsvariablen haben Vorrang vor dem Schlüsselbund. Was fehlt, wird abgefragt und nicht gespeichert.
 - **Cloud-Ablage:** Als `--target` eignet sich ein per Google Drive for Desktop (oder OneDrive, Dropbox) synchronisierter Ordner.
 - **Kalender:** `Fristen/fristen.ics` in den Kalender importieren.
 
@@ -207,12 +209,14 @@ schtasks /create /tn "paperpilot-mail" /sc daily /st 09:00 /tr "paperpilot run -
 | `paperpilot run` | Postfach einsortieren (Standard: Trockenlauf) | `--source json\|imap`, `--input`, `--target`, `--classifier rules\|llm`, `--since`, `--apply` |
 | `paperpilot eval` | Trefferquote messen | `--testset`, `--classifier`, `--min-accuracy` |
 | `paperpilot init` | Regeldatei anlegen | `--path` |
+| `paperpilot login` | Postfach-Zugang im Schlüsselbund speichern | `--status`, `--no-check` |
+| `paperpilot logout` | Gespeicherte Zugangsdaten löschen | |
 
 ## Entwicklung
 
 ```bash
 pip install -e ".[dev]"
-pytest --cov=paperpilot_ops   # 40 Tests, Abdeckung
+pytest --cov=paperpilot_ops   # Tests mit Abdeckung
 ruff check . && ruff format --check .
 mypy                          # strenge Typprüfung
 paperpilot eval --min-accuracy 0.85
@@ -226,6 +230,7 @@ Die CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) prüft auf Pytho
 |---|---|
 | [docs/architecture.md](docs/architecture.md) | Ports und Adapter, Komponenten, Datenfluss, Designentscheidungen |
 | [docs/adr/](docs/adr/README.md) | Architekturentscheidungen mit Alternativen und Folgen |
+| [docs/security.md](docs/security.md) | Sicherheitskonzept: Schutzgüter, Zusagen und die Tests dazu |
 | [docs/configuration.md](docs/configuration.md) | Alle Felder der Regeldatei, Scoring, Beispiele |
 | [docs/evaluation.md](docs/evaluation.md) | Testset, Metriken, Fehleranalyse, Grenzen |
 | [docs/roadmap.md](docs/roadmap.md) | Zielbild und geplante Schritte |

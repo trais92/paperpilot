@@ -2,6 +2,16 @@
 
 ## Unveröffentlicht
 
+### Zugangsdaten im Schlüsselbund (Roadmap 1)
+
+- `paperpilot login` fragt IMAP-Server, Benutzer und App-Passwort ab, meldet sich zur Probe an und speichert im Schlüsselbund des Betriebssystems. `--status` zeigt, was gespeichert ist, ohne Werte.
+- `paperpilot logout` löscht alle gespeicherten Einträge.
+- Neue Adapter `KeyringCredentialStore` (optionales Extra `[keyring]`) und `ChainedCredentialStore`; `paperpilot run` liest erst Umgebungsvariablen, dann den Schlüsselbund.
+- Neuer Port `MutableCredentialStore` für Speichern und Löschen; der Kern liest weiterhin nur über `CredentialStore`.
+- Sicherheitskonzept in `docs/security.md`, jede Zusage mit Test.
+
+### Architektur-Grundlage (Roadmap 0)
+
 Architektur-Grundlage für die nächsten Schritte (Roadmap Phase 0). Verhalten und Ergebnisse der CLI sind unverändert.
 
 - Ports in `ports.py`: `MailSource`, `Classifier`, `StorageTarget`, `CredentialStore`. Pipeline und Evaluation hängen nur noch davon ab.

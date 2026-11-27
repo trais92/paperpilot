@@ -87,6 +87,15 @@ class ImapSource:
     def __init__(self, host: str, user: str, password: str, folder: str = "INBOX"):
         self.host, self.user, self.password, self.folder = host, user, password, folder
 
+    def __repr__(self) -> str:  # nie das Passwort zeigen
+        return f"ImapSource(host={self.host!r}, user={self.user!r}, folder={self.folder!r})"
+
+    def check(self) -> None:
+        """Meldet sich an und gleich wieder ab. Wirft `imaplib.IMAP4.error` bei falschen Zugangsdaten."""
+        with imaplib.IMAP4_SSL(self.host) as conn:
+            conn.login(self.user, self.password)
+            conn.select(self.folder, readonly=True)
+
     def fetch(self, since: datetime | None = None) -> Iterator[Mail]:
         with imaplib.IMAP4_SSL(self.host) as conn:
             conn.login(self.user, self.password)

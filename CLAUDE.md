@@ -8,11 +8,12 @@ Eine Python-CLI, die Mails klassifiziert, Mails und Anhänge nach Namenskonventi
 
 Ziel (siehe [docs/roadmap.md](docs/roadmap.md)): Eine fest eingebaute KI erkennt Kategorie und Angaben jeder Mail, abgelegt wird in einer Ordnerstruktur aus wählbaren Kategorien, lokal oder in Google Drive, bedienbar ohne Terminal über eine lokale Seite im Browser.
 
-## Stand (v0.1.0 + Phase 0, 26.11.2026)
+## Stand (v0.1.0 + Roadmap 0–1, 27.11.2026)
 
 - Kern fertig und getestet: Quellen (JSON, IMAP lesend), Regel-Klassifizierer, Namenskonvention, Fristen + iCalendar, Ablage mit Duplikat-Index und Lauf-Stand, Tracker, Bericht, Evaluation, CLI (`demo`, `run`, `eval`, `init`).
 - Phase 0 (Architektur-Grundlage) erledigt: Ports in `ports.py` (`MailSource`, `Classifier`, `StorageTarget`, `CredentialStore`), `MemoryStore`, `EnvCredentialStore`, Vertragstest für Ablageziele, ADR 0001 bis 0006.
-- 40 Tests grün, Abdeckung 92 %, `ruff` und `mypy --strict` sauber. CI auf Python 3.11 bis 3.13 prüft zusätzlich Format, Abdeckung ≥ 85 %, Demo-Lauf und `eval --min-accuracy 0.85`.
+- Roadmap 1 erledigt: Zugangsdaten im Schlüsselbund (`paperpilot login`/`logout`, `KeyringCredentialStore`), Sicherheitskonzept in [docs/security.md](docs/security.md).
+- 58 Tests grün, Abdeckung 92 %, `ruff` und `mypy --strict` sauber. CI auf Python 3.11 bis 3.13 prüft zusätzlich Format, Abdeckung ≥ 85 %, Demo-Lauf und `eval --min-accuracy 0.85`.
 - Evaluation Regeln: 90,4 % Label, 94,2 % Gruppe, 11,5 % `unklar` auf 52 Mails. Siehe [docs/evaluation.md](docs/evaluation.md).
 - **Nicht verifiziert:** `LLMClassifier` gegen die echte API. Getestet nur mit einem Fake-Client (`tests/test_classify.py`). Der Aufruf nutzt `client.beta.messages.create` mit `output_config.format` (JSON-Schema), `effort: "low"`, Modell `claude-opus-5-5` (über `PAPERPILOT_MODEL` änderbar) sowie `betas=["server-side-fallback-2026-07-01"]` und `fallbacks="default"`. Beim ersten echten Lauf prüfen, ob die installierte `anthropic`-Version diese Parameter akzeptiert. Sonst `fallbacks`/`betas` entfernen und `client.messages.create` nutzen.
 - Paketname `paperpilot-ops` (PyPI-Name `paperpilot` ist vergeben), Importpaket `paperpilot_ops`, Befehl `paperpilot`. Repo: `trais92/paperpilot`.
@@ -49,7 +50,7 @@ Bei Regeländerungen (`default_rules.toml`) immer `paperpilot eval` vorher und n
 | Datei | Inhalt | Achtung |
 |---|---|---|
 | `src/paperpilot_ops/ports.py` | Protokolle `MailSource`, `Classifier`, `StorageTarget`, `CredentialStore` | Verträge stehen in den Docstrings, Änderungen brauchen ein ADR |
-| `src/paperpilot_ops/credentials.py` | `EnvCredentialStore`, fest vereinbarte Schlüssel `KEYS` | Neue Zugangsdaten zuerst in `KEYS` eintragen |
+| `src/paperpilot_ops/credentials.py` | `EnvCredentialStore`, `KeyringCredentialStore`, `ChainedCredentialStore`, fest vereinbarte Schlüssel `KEYS` | Neue Zugangsdaten zuerst in `KEYS` eintragen; Fehlermeldungen nie mit Wert |
 | `src/paperpilot_ops/cli.py` | Argumente, Unterbefehle, Verdrahtung der Adapter | Demo-/Testdaten über `importlib.resources` |
 | `src/paperpilot_ops/pipeline.py` | `plan_mail()` (rein), `run()` (führt aus), `render_report()` | Planen ohne Seiteneffekte halten |
 | `src/paperpilot_ops/classify.py` | `RuleClassifier`, `LLMClassifier`, `make_classifier()` | Neue Klassifizierer: Port `Classifier`, in `make_classifier` und CLI-`choices` eintragen |
@@ -65,11 +66,10 @@ Bei Regeländerungen (`default_rules.toml`) immer `paperpilot eval` vorher und n
 
 Vollständig mit Fertig-Kriterien in [docs/roadmap.md](docs/roadmap.md). Als Nächstes Phase 1:
 
-1. **Zugangsdaten im Schlüsselbund** ([ADR 0004](docs/adr/0004-zugangsdaten-im-schluesselbund.md)): Adapter `KeyringCredentialStore` als optionales Extra `[keyring]`, Speichern nach Abfrage anbieten, Befehl zum Löschen, Tests dass nichts in Dateien oder Logs landet.
-2. **KI-Anbindung** ([ADR 0003](docs/adr/0003-ki-fest-eingebaut.md)): OpenAI-kompatibler Client mit der Standardbibliothek (`urllib`) für Mistral (Standard) und Groq (Reserve), Claude über das vorhandene Extra. Antworten gegen erlaubte Labels prüfen. Kontingente und Datenregeln vorher in den offiziellen Unterlagen prüfen.
-3. **Wählbare Kategorien mit Übersichtstabelle** ([ADR 0005](docs/adr/0005-ablage-ordnerstruktur-lokal-oder-drive.md)).
-4. **Felder aus Mail und PDF auslesen.**
-5. **Neues Testset mit Feldern und Dev/Holdout**, Messung je Anbieter.
+1. **KI-Anbindung** ([ADR 0003](docs/adr/0003-ki-fest-eingebaut.md)): OpenAI-kompatibler Client mit der Standardbibliothek (`urllib`) für Mistral (Standard) und Groq (Reserve), Claude über das vorhandene Extra. Antworten gegen erlaubte Labels prüfen. Kontingente und Datenregeln vorher in den offiziellen Unterlagen prüfen.
+2. **Wählbare Kategorien mit Übersichtstabelle** ([ADR 0005](docs/adr/0005-ablage-ordnerstruktur-lokal-oder-drive.md)).
+3. **Felder aus Mail und PDF auslesen.**
+4. **Neues Testset mit Feldern und Dev/Holdout**, Messung je Anbieter.
 
 ## Bekannte Schwächen
 

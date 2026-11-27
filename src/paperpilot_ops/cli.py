@@ -1,4 +1,4 @@
-"""Kommandozeile: paperpilot demo | run | eval | init"""
+"""Kommandozeile: paperpilot demo | run | eval | init | login | logout"""
 
 from __future__ import annotations
 
@@ -14,10 +14,10 @@ from pathlib import Path
 from . import __version__
 from .classify import make_classifier
 from .config import default_rules_text, load_rules
-from .credentials import EnvCredentialStore
+from .credentials import KEYS, CredentialStoreError, KeyringCredentialStore, default_credential_store
 from .evaluate import evaluate, render_eval
 from .pipeline import render_report, run
-from .ports import CredentialStore, MailSource
+from .ports import CredentialStore, MailSource, MutableCredentialStore
 from .sources import ImapSource, JsonSource
 from .store import LocalStore
 
@@ -40,12 +40,72 @@ def cmd_demo(args: argparse.Namespace) -> int:
     return 0
 
 
+DEFAULT_IMAP_HOST = "imap.gmail.com"
+
+
 def _imap_source(creds: CredentialStore) -> ImapSource:
-    """IMAP-Quelle aus gespeicherten Zugangsdaten, fehlende werden abgefragt (und nicht gespeichert)."""
-    host = creds.get("imap_host") or "imap.gmail.com"
+    """IMAP-Quelle aus gespeicherten Zugangsdaten. Fehlende Werte werden abgefragt und nicht gespeichert."""
+    host = creds.get("imap_host") or DEFAULT_IMAP_HOST
     user = creds.get("imap_user") or input("IMAP-Benutzer: ")
-    password = creds.get("imap_password") or getpass.getpass("App-Passwort (wird nicht gespeichert): ")
+    password = creds.get("imap_password")
+    if not password:
+        print("Tipp: 'paperpilot login' speichert die Zugangsdaten im Schlüsselbund, dann entfällt die Abfrage.")
+        password = getpass.getpass("App-Passwort (wird nicht gespeichert): ")
     return ImapSource(host, user, password)
+
+
+def _open_vault() -> MutableCredentialStore:
+    """Schlüsselbund des Betriebssystems. Eigene Funktion, damit Tests eine Attrappe einsetzen können."""
+    return KeyringCredentialStore()
+
+
+def _verify_imap(source: ImapSource) -> None:
+    """Probe-Anmeldung vor dem Speichern. Eigene Funktion, damit Tests ohne Netz auskommen."""
+    source.check()
+
+
+def cmd_login(args: argparse.Namespace) -> int:
+    """Zugangsdaten einmal abfragen und im Schlüsselbund speichern (docs/adr/0004)."""
+    try:
+        vault = _open_vault()
+        if args.status:
+            for key in KEYS:
+                print(f"{key:<16} {'gespeichert' if vault.get(key) else 'fehlt'}")
+            return 0
+        host = input(f"IMAP-Server [{vault.get('imap_host') or DEFAULT_IMAP_HOST}]: ").strip()
+        host = host or vault.get("imap_host") or DEFAULT_IMAP_HOST
+        user = input("IMAP-Benutzer (Mailadresse): ").strip()
+        password = getpass.getpass("App-Passwort: ")
+        if not user or not password:
+            print("Benutzer und App-Passwort sind Pflicht. Nichts gespeichert.", file=sys.stderr)
+            return 1
+        if not args.no_check:
+            try:
+                _verify_imap(ImapSource(host, user, password))
+            except Exception as exc:  # Meldung des Servers kann Eingaben spiegeln, deshalb nur der Typ
+                reason = type(exc).__name__
+                print(f"Anmeldung bei {host} fehlgeschlagen ({reason}). Nichts gespeichert.", file=sys.stderr)
+                return 1
+        vault.set("imap_host", host)
+        vault.set("imap_user", user)
+        vault.set("imap_password", password)
+    except CredentialStoreError as exc:
+        print(f"{exc}\nAlternative ohne Schlüsselbund: Umgebungsvariablen, siehe README.", file=sys.stderr)
+        return 2
+    print(f"Gespeichert im Schlüsselbund ({host}, {user}). Löschen mit 'paperpilot logout'.")
+    return 0
+
+
+def cmd_logout(args: argparse.Namespace) -> int:
+    """Alle Einträge von PaperPilot aus dem Schlüsselbund löschen."""
+    try:
+        vault = _open_vault()
+        removed = [key for key in KEYS if vault.delete(key)]
+    except CredentialStoreError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    print(f"Gelöscht: {', '.join(removed)}." if removed else "Im Schlüsselbund war nichts gespeichert.")
+    return 0
 
 
 def cmd_run(args: argparse.Namespace) -> int:
@@ -54,7 +114,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     since = datetime.fromisoformat(args.since) if args.since else store.last_run()
     source: MailSource
     if args.source == "imap":
-        source = _imap_source(EnvCredentialStore())
+        source = _imap_source(default_credential_store())
     else:
         source = JsonSource(args.input or _data("demo_inbox.json"))
     mails = list(source.fetch(since))
@@ -115,6 +175,14 @@ def build_parser() -> argparse.ArgumentParser:
     i = sub.add_parser("init", help="Standard-Regeldatei zum Anpassen anlegen")
     i.add_argument("--path", default="rules.toml")
     i.set_defaults(func=cmd_init)
+
+    lg = sub.add_parser("login", help="Postfach-Zugang im Schlüsselbund des Betriebssystems speichern")
+    lg.add_argument("--status", action="store_true", help="nur anzeigen, was gespeichert ist (ohne Werte)")
+    lg.add_argument("--no-check", action="store_true", help="ohne Probe-Anmeldung speichern")
+    lg.set_defaults(func=cmd_login)
+
+    lo = sub.add_parser("logout", help="Gespeicherte Zugangsdaten aus dem Schlüsselbund löschen")
+    lo.set_defaults(func=cmd_logout)
     return p
 
 

@@ -34,6 +34,7 @@ Eine Gruppe ist eine Vorbedingung für zusammengehörige Kategorien.
 |---|---|
 | `keywords` | Mindestens eines muss treffen, sonst bekommen alle Kategorien der Gruppe Score 0 |
 | `folder` | Standard-Zielordner der Gruppe, z. B. `"Bewerbungen/{company}"` |
+| `enabled` | `false` schaltet alle Kategorien der Gruppe ab, auch `<gruppe>/sonstiges` |
 
 ## `[[categories]]`
 
@@ -45,6 +46,7 @@ Eine Gruppe ist eine Vorbedingung für zusammengehörige Kategorien.
 | `senders` | nein | Teilstrings der Absenderadresse, zählen stark (×3) |
 | `group` | nein | Zugehörige Gruppe |
 | `folder` | nein | Zielordner, sonst der Ordner der Gruppe, sonst `review_folder` |
+| `enabled` | nein | `false`: Mails dieser Kategorie werden erkannt, aber nicht abgelegt (Bericht: „nicht gewählt“). Standard `true` |
 | `action` | nein | `"file"` (Standard) oder `"ignore"`. Kategorien mit `ignore` bilden den Vorfilter: Was die Regeln dort einordnen, geht nicht an die KI |
 
 ### Platzhalter in `folder`
@@ -53,6 +55,18 @@ Eine Gruppe ist eine Vorbedingung für zusammengehörige Kategorien.
 |---|---|---|
 | `{company}` | Firmen-/Absendername aus der Domain | `Kranich-Logistik` |
 | `{year}` | Jahr des Mail-Datums | `2026` |
+
+## Übersichtstabellen
+
+Jeder Zielordner bekommt eine Übersichtstabelle, in die jede abgelegte Mail eine Zeile schreibt. Sie liegt im festen Teil des Ordnerpfads, also vor dem ersten Platzhalter:
+
+| `folder` | Übersicht |
+|---|---|
+| `06 Rechnungen & Belege/{year}` | `06 Rechnungen & Belege/Übersicht.csv` |
+| `Bewerbungen/{company}` | `Bewerbungen/Übersicht.csv` |
+| `00 Eingang` (unklare Mails) | `00 Eingang/Übersicht.csv` |
+
+Spalten: `Datum`, `Absender`, `Betreff`, `Kategorie`, `Frist`, `Dateien`, `Begründung`, `Mail-ID`. Lokal ist das eine CSV-Datei mit Semikolon und UTF-8 mit BOM, die Excel und LibreOffice per Doppelklick richtig öffnen. Zeilen werden nur angehängt, nie geändert oder gelöscht. Kommen später Spalten hinzu (z. B. ausgelesene Beträge), werden sie hinten angefügt.
 
 ## Scoring (Regel-Klassifizierer)
 

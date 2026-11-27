@@ -57,6 +57,11 @@ FRISTEN & TERMINE:
   ...
 
 IGNORIERT: 2 Werbe-/Alert-Mails
+
+ÜBERSICHTEN:
+  = 00 Eingang/Übersicht
+  = 06 Rechnungen & Belege/Übersicht
+  ...
 ```
 
 Danach sieht der Ordner so aus:
@@ -64,9 +69,13 @@ Danach sieht der Ordner so aus:
 ```text
 demo-ablage/
 ├── 00 Eingang/                       unklare Mails zur menschlichen Prüfung
-├── 02 Finanzen/ … 09 Wohnen/         Mails + Anhänge, benannt als JJJJ-MM-TT_Absender_Thema.ext
+├── 02 Finanzen/ … 09 Wohnen/         Mails + Anhänge (JJJJ-MM-TT_Absender_Thema.ext) und je eine Übersicht.csv
+├── 06 Rechnungen & Belege/
+│   ├── 2026/                         Dokumente nach Jahr
+│   └── Übersicht.csv                 eine Zeile pro Mail: Datum, Absender, Frist, Dateien, Begründung
 ├── Bewerbungen/
 │   ├── Kranich-Logistik/             ein Ordner pro Firma
+│   ├── Übersicht.csv
 │   └── tracker.csv                   eine Zeile pro Firma, Spalte "neu_aus_mail"
 ├── Fristen/
 │   ├── fristen.csv
@@ -143,7 +152,7 @@ folder = "05 Versicherungen"
 keywords = ["versicherung", "police", "versicherungsschein", "beitragsanpassung"]
 ```
 
-Bewerbungen sind zweistufig: Erst muss die Gruppe passen (`[groups.bewerbung]`), dann entscheidet der Untertyp (Einladung, Absage, …). So landet eine Rabatt-Mail mit dem Wort „Angebot" nicht als Jobangebot im Tracker. Platzhalter wie `{company}` und `{year}` werden beim Ablegen ersetzt.
+Kategorien lassen sich mit `enabled = false` abwählen und mit einer `description` in einem Satz selbst anlegen; mehr braucht die KI nicht. Bewerbungen sind zweistufig: Erst muss die Gruppe passen (`[groups.bewerbung]`), dann entscheidet der Untertyp (Einladung, Absage, …). So landet eine Rabatt-Mail mit dem Wort „Angebot" nicht als Jobangebot im Tracker. Platzhalter wie `{company}` und `{year}` werden beim Ablegen ersetzt.
 
 Vollständige Referenz mit allen Feldern und dem Scoring: [docs/configuration.md](docs/configuration.md).
 

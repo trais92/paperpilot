@@ -66,3 +66,31 @@ def test_last_run_never_goes_back(store_factory):
     store_factory().save(datetime(2026, 11, 1, 10, 0))  # älterer Lauf darf den Stand nicht zurücksetzen
     store_factory().save(None)
     assert store_factory().last_run() == datetime(2026, 11, 20, 10, 0)
+
+
+def test_append_rows_creates_table_and_appends(store_factory):
+    store = store_factory()
+    assert store.read_rows("A/Übersicht") == []
+    store.append_rows("A/Übersicht", ["Datum", "Betreff"], [{"Datum": "2026-11-20", "Betreff": "Eins"}])
+    store_factory().append_rows("A/Übersicht", ["Datum", "Betreff"], [{"Datum": "2026-11-21", "Betreff": "Zwei"}])
+    assert store_factory().read_rows("A/Übersicht") == [
+        {"Datum": "2026-11-20", "Betreff": "Eins"},
+        {"Datum": "2026-11-21", "Betreff": "Zwei"},
+    ]
+
+
+def test_append_rows_adds_new_columns_and_keeps_old_data(store_factory):
+    store = store_factory()
+    store.append_rows("T", ["Datum", "Betreff"], [{"Datum": "1", "Betreff": "alt"}])
+    store.append_rows("T", ["Datum", "Betrag"], [{"Datum": "2", "Betrag": "9,99"}])
+    assert store_factory().read_rows("T") == [
+        {"Datum": "1", "Betreff": "alt", "Betrag": ""},
+        {"Datum": "2", "Betreff": "", "Betrag": "9,99"},
+    ]
+
+
+def test_tables_and_documents_do_not_collide(store_factory):
+    store = store_factory()
+    store.append_rows("X/Übersicht", ["a"], [{"a": "1"}])
+    assert store.write_file("X/Übersicht.md", b"doc") == "X/Übersicht.md"
+    assert store.read_rows("X/Übersicht") == [{"a": "1"}]

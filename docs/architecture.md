@@ -129,6 +129,7 @@ Alle Adapter kennen nur die fest vereinbarten Schlüssel aus `KEYS` (`imap_host`
 - `write_file()` überschreibt nie: Bei Namenskollision wird `-2`, `-3`, … angehängt. Rückgabe ist der tatsächlich verwendete relative Pfad.
 - `.paperpilot/index.json` ordnet SHA-256 → Pfad zu (Duplikat-Erkennung über Läufe hinweg).
 - `.paperpilot/state.json` speichert `last_mail_date`. Der nächste Lauf holt nur neuere Mails.
+- `append_rows()`/`read_rows()` führen die Übersichtstabelle pro Zielordner. Der Vertrag (neue Spalten hinten, nichts geht verloren) steckt in `merge_table()` und gilt für jeden Adapter. `LocalStore` schreibt CSV mit Semikolon und BOM für Excel.
 - `update_tracker()` und `update_deadlines()` schreiben nur über `read_text`/`write_text` des Ablageziels und funktionieren deshalb mit jedem Adapter.
 - `update_tracker()` hält eine Zeile pro Firma. `neu_aus_mail` sammelt Einträge (`NEU Datum · Typ · Betreff · Frist`) als Übergabepunkt für andere Werkzeuge oder Agenten, die selbst keinen Mailzugang haben.
 - `update_deadlines()` führt neue Fristen mit der vorhandenen CSV zusammen und erzeugt die `.ics` jedes Mal komplett neu.
@@ -142,8 +143,9 @@ Alle Adapter kennen nur die fest vereinbarten Schlüssel aus `KEYS` (`imap_host`
 | `file` | erkannte Kategorie | Dateien schreiben, Tracker/Fristen aktualisieren |
 | `review` | `unklar` | Ablage in `review_folder`, wird gemeldet |
 | `duplicate` | alle Dateien schon im Index oder im selben Lauf | nichts |
+| `skip` | Kategorie erkannt, aber mit `enabled = false` abgewählt | nichts, im Bericht unter „nicht gewählt“ |
 
-`run()` sortiert nach Datum, plant alles und führt nur bei `apply=True` aus. `render_report()` erzeugt den Bericht.
+`run()` sortiert nach Datum, plant alles und führt nur bei `apply=True` aus. Beim Ausführen sammelt es die Zeilen pro Übersichtstabelle (mit den tatsächlich verwendeten Dateinamen) und schreibt jede Tabelle einmal. `render_report()` erzeugt den Bericht.
 
 ### `evaluate.py`
 Siehe [evaluation.md](evaluation.md).

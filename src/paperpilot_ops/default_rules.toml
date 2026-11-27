@@ -5,6 +5,9 @@
 # - Die Stichwörter (`keywords`, `senders`) dienen dem Vorfilter: Was sie sicher als Werbung
 #   erkennen, geht gar nicht erst an die KI. Außerdem sind sie der Vergleichswert in `paperpilot eval`.
 #   Stichwörter werden kleingeschrieben verglichen, Treffer im Betreff zählen doppelt.
+# - `enabled = false` an einer Kategorie oder Gruppe: wird erkannt, aber nicht abgelegt.
+# - Jeder Zielordner bekommt eine Übersichtstabelle ("Übersicht") im festen Teil des Pfads,
+#   z. B. "06 Rechnungen & Belege/Übersicht.csv".
 
 [ai]
 # Anbieter, der zuerst gefragt wird: "groq", "mistral" oder "claude".

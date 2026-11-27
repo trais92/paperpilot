@@ -18,6 +18,7 @@ class Category:
     folder: str = ""
     action: str = "file"  # 'file' | 'ignore'
     description: str = ""  # Beschreibung in einem Satz, damit die KI die Kategorie versteht
+    enabled: bool = True  # False: wird erkannt, aber nicht abgelegt ("nicht gewählt")
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,7 @@ class Group:
     name: str
     keywords: tuple[str, ...]
     folder: str
+    enabled: bool = True  # False schaltet alle Kategorien der Gruppe ab
 
 
 # Bekannte KI-Anbieter. Die Technik dahinter steht in ai/providers.py.
@@ -92,6 +94,34 @@ class Rules:
             return self.groups[cat.group].folder
         return self.review_folder
 
+    def is_selected(self, label: str) -> bool:
+        """Soll diese Kategorie abgelegt werden? `unklar` und unbekannte Labels immer (in den Eingang)."""
+        group = self.groups.get(label.split("/", 1)[0]) if "/" in label else None
+        if group is not None and not group.enabled:
+            return False
+        cat = self.category(label)
+        return cat.enabled if cat is not None else True
+
+    def table_for(self, folder: str) -> str:
+        """Übersichtstabelle eines Zielordners: im festen Teil des Ordners vor dem ersten Platzhalter.
+
+        `06 Rechnungen & Belege/{year}` -> `06 Rechnungen & Belege/Übersicht`,
+        `Bewerbungen/{company}` -> `Bewerbungen/Übersicht`, `00 Eingang` -> `00 Eingang/Übersicht`.
+        """
+        fixed = [part for part in folder.split("/") if part][: _fixed_depth(folder)]
+        return "/".join([*fixed, OVERVIEW_NAME])
+
+
+OVERVIEW_NAME = "Übersicht"
+
+
+def _fixed_depth(folder: str) -> int:
+    parts = [part for part in folder.split("/") if part]
+    for i, part in enumerate(parts):
+        if "{" in part:
+            return i
+    return len(parts)
+
 
 def default_rules_text() -> str:
     return resources.files("paperpilot_ops").joinpath("default_rules.toml").read_text("utf-8")
@@ -101,7 +131,12 @@ def load_rules(path: str | Path | None = None) -> Rules:
     raw = tomllib.loads(Path(path).read_text("utf-8") if path else default_rules_text())
     g = raw.get("general", {})
     groups = {
-        name: Group(name, tuple(k.lower() for k in spec.get("keywords", [])), spec.get("folder", ""))
+        name: Group(
+            name,
+            tuple(k.lower() for k in spec.get("keywords", [])),
+            spec.get("folder", ""),
+            bool(spec.get("enabled", True)),
+        )
         for name, spec in raw.get("groups", {}).items()
     }
     cats = tuple(
@@ -113,6 +148,7 @@ def load_rules(path: str | Path | None = None) -> Rules:
             folder=c.get("folder", ""),
             action=c.get("action", "file"),
             description=c.get("description", ""),
+            enabled=bool(c.get("enabled", True)),
         )
         for c in raw.get("categories", [])
     )

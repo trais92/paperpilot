@@ -16,7 +16,7 @@ Jeder Schritt ist ein eigener Pull Request mit Tests, Doku und, wo nötig, einem
 |---|---|---|---|
 | 1 | Zugangsdaten im Schlüsselbund ([ADR 0004](adr/0004-zugangsdaten-im-schluesselbund.md)) | App-Passwort einmal eingeben, der nächste Lauf fragt nicht; Befehl zum Löschen | erledigt |
 | 2 | KI-Anbindung: Groq, Mistral als Reserve, Claude ([ADR 0003](adr/0003-ki-fest-eingebaut.md), [0007](adr/0007-ki-schicht-mit-austauschbaren-modellen.md)) | Eine Mail ergibt Kategorie oder `unklar`; Gratis-Anbieter ohne Zusatzpaket; Antworten werden gegen erlaubte Kategorien geprüft | erledigt, Messung mit echtem Schlüssel offen |
-| 3 | Wählbare Kategorien, auch eigene, mit Ordnerstruktur und Übersichtstabelle ([ADR 0005](adr/0005-ablage-ordnerstruktur-lokal-oder-drive.md)) | Demo-Lauf legt nur die gewählten Ordner an und füllt deren Übersicht |
+| 3 | Wählbare Kategorien, auch eigene, mit Ordnerstruktur und Übersichtstabelle ([ADR 0005](adr/0005-ablage-ordnerstruktur-lokal-oder-drive.md)) | Demo-Lauf legt nur die gewählten Ordner an und füllt deren Übersicht | erledigt |
 | 4 | KI liest Felder aus Mail und PDF-Anhang aus (Betrag, Datum, Nummer, Fristen) | Felder landen in der Übersicht; gescannte PDFs ohne Text gehen in den Eingang |
 | 5 | Neues Testset (≥ 200 erfundene Mails mit Feldern, `split: dev\|holdout`), Messung von Kategorie und Feldern je Anbieter, `eval --json`, Konfusionsmatrix | Zahlen für Regeln, Mistral, Groq und Claude in `docs/evaluation.md` |
 

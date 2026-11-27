@@ -2,6 +2,13 @@
 
 ## Unveröffentlicht
 
+### Wählbare Kategorien und Übersichtstabellen (Roadmap 3)
+
+- `enabled = false` an Kategorie oder Gruppe: Mails werden erkannt, aber nicht abgelegt (neue Aktion `skip`, im Bericht „NICHT GEWÄHLT“).
+- Eigene Kategorien brauchen nur `label`, `description` und `folder`; Stichwörter sind optional.
+- Pro Zielordner eine Übersichtstabelle (`Übersicht.csv`, Excel-tauglich) mit einer Zeile pro abgelegter Mail, auch für den Eingang.
+- Port `StorageTarget` um `append_rows`/`read_rows` erweitert, Vertragstest ergänzt.
+
 ### KI-Schicht (Roadmap 2)
 
 - Die KI ordnet jede Mail ein, die der Vorfilter nicht als Werbung erkannt hat. `paperpilot run` nutzt sie standardmäßig; `--classifier rules` bleibt als Weg ohne KI.

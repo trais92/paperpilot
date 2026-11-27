@@ -18,7 +18,7 @@ docs/adr/0002-ports-und-adapter.md
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping, Sequence
 from datetime import datetime
 from typing import Any, Protocol
 
@@ -81,6 +81,11 @@ class StorageTarget(Protocol):
     - `write_text` ersetzt eine Übersichtsdatei (Tracker, Fristen) vollständig. Nur für Dateien,
       die PaperPilot selbst erzeugt; abgelegte Dokumente laufen immer über `write_file`.
     - `read_text` liefert `None`, wenn die Datei nicht existiert.
+    - `append_rows` hängt Zeilen an eine Übersichtstabelle an. `table` ist ein relativer Pfad ohne
+      Dateiendung; das Format wählt der Adapter (lokal CSV, in Drive eine Google-Tabelle). Fehlt die
+      Tabelle, entsteht sie mit `columns`. Neue Spalten kommen hinten dazu, bestehende Zeilen und
+      Spalten bleiben erhalten. Fehlende Werte sind leer.
+    - `read_rows` liefert alle Zeilen einer Übersichtstabelle, leer, wenn es sie nicht gibt.
     - `save` merkt sich das Datum der neuesten verarbeiteten Mail; `last_run` geht nie zurück.
     - Pfade sind relativ und nutzen `/` als Trenner, unabhängig vom Betriebssystem.
     """
@@ -97,6 +102,10 @@ class StorageTarget(Protocol):
     def read_text(self, rel_path: str) -> str | None: ...
 
     def write_text(self, rel_path: str, text: str) -> None: ...
+
+    def append_rows(self, table: str, columns: Sequence[str], rows: Sequence[Mapping[str, str]]) -> None: ...
+
+    def read_rows(self, table: str) -> list[dict[str, str]]: ...
 
     def last_run(self) -> datetime | None: ...
 

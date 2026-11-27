@@ -88,8 +88,9 @@ class MailPlan:
 
     mail: Mail
     classification: Classification
-    action: str  # 'file' | 'ignore' | 'review' | 'duplicate'
+    action: str  # 'file' | 'ignore' | 'review' | 'duplicate' | 'skip' (Kategorie nicht gewählt)
     files: list[PlannedFile] = field(default_factory=list)
+    table: str = ""  # Übersichtstabelle, in die die Mail nach dem Ablegen eingetragen wird
     deadlines: list[Deadline] = field(default_factory=list)
     notify: bool = False
     company: str = ""

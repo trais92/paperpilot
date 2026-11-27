@@ -7,6 +7,7 @@ import sys
 import types
 
 import pytest
+from fakes import BrokenKeyring, FakeKeyring
 
 from paperpilot_ops import cli
 from paperpilot_ops.cli import _imap_source
@@ -20,30 +21,6 @@ from paperpilot_ops.credentials import (
 )
 
 SECRET = "app-passwort-0815"
-
-
-class FakeKeyring:
-    """Bildet die drei genutzten Funktionen des Pakets `keyring` nach."""
-
-    def __init__(self):
-        self.entries: dict[tuple[str, str], str] = {}
-
-    def get_password(self, service_name, username):
-        return self.entries.get((service_name, username))
-
-    def set_password(self, service_name, username, password):
-        self.entries[(service_name, username)] = password
-
-    def delete_password(self, service_name, username):
-        del self.entries[(service_name, username)]
-
-
-class BrokenKeyring(FakeKeyring):
-    def get_password(self, service_name, username):
-        raise RuntimeError(f"Backend kaputt, Wert war {SECRET}")
-
-    def set_password(self, service_name, username, password):
-        raise RuntimeError(f"kann {password} nicht speichern")
 
 
 # -- Umgebungsvariablen ------------------------------------------------------------------

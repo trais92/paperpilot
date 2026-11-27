@@ -1,4 +1,4 @@
-"""Kommandozeile: paperpilot demo | run | eval | init | login | logout"""
+"""Kommandozeile: paperpilot setup | demo | run | eval | init | login | logout"""
 
 from __future__ import annotations
 
@@ -22,9 +22,11 @@ from .evaluate import evaluate, render_eval
 from .models import Mail
 from .pipeline import RunResult, render_report, run
 from .ports import Classifier, CredentialStore, MailSource, MutableCredentialStore, StorageTarget
+from .settings import apply_settings, load_settings, settings_path
 from .sources import ImapSource, JsonSource
 from .store import LocalStore
-from .web import ReviewSession, serve
+from .web import ReviewSession, SetupSession, serve
+from .web.page import LocalPage
 
 
 def _data(name: str) -> Path:
@@ -176,8 +178,13 @@ def _classifier_or_exit(name: str, rules: Rules, creds: CredentialStore) -> Clas
     return classifier
 
 
+def _load_rules(path: str | None) -> Rules:
+    """Regeldatei plus persönliche Einstellungen aus dem Assistenten (settings.toml, ADR 0010)."""
+    return apply_settings(load_rules(path), load_settings(settings_path()))
+
+
 def cmd_run(args: argparse.Namespace) -> int:
-    rules = load_rules(args.rules)
+    rules = _load_rules(args.rules)
     creds = default_credential_store()
     classifier = _classifier_or_exit(args.classifier, rules, creds)
     if classifier is None:
@@ -209,7 +216,7 @@ def _review_in_browser(mails: list[Mail], plan: RunResult, rules: Rules, store: 
     session = ReviewSession(mails, plan, rules, store, secrets.token_urlsafe(32))
     print("Bericht im Browser geöffnet. Dort prüfen, korrigieren und freigeben (Abbrechen mit Strg+C).")
     try:
-        _serve_review(session)
+        _serve_page(session)
     except KeyboardInterrupt:
         pass  # Abbruch im Terminal: nichts geschrieben, wie „Abbrechen“ auf der Seite
     if session.result is not None:
@@ -219,15 +226,50 @@ def _review_in_browser(mails: list[Mail], plan: RunResult, rules: Rules, store: 
     return 1
 
 
-def _serve_review(session: ReviewSession) -> None:
+def _serve_page(page: LocalPage) -> None:
     """Naht für Tests: startet den lokalen Server und öffnet den Standardbrowser."""
     import webbrowser
 
-    serve(session, webbrowser.open)
+    serve(page, webbrowser.open)
+
+
+def cmd_setup(args: argparse.Namespace) -> int:
+    """Einrichtungsassistent im Browser (Roadmap 8). Danach auf Wunsch gleich der erste Lauf zur Freigabe."""
+    path = settings_path()
+    vault: MutableCredentialStore | None = None
+    vault_error = ""
+    try:
+        vault = _open_vault()
+    except CredentialStoreError as exc:
+        vault_error = str(exc)
+    session = SetupSession(
+        rules=load_rules(args.rules),
+        settings=load_settings(path),
+        settings_file=path,
+        vault=vault,
+        token=secrets.token_urlsafe(32),
+        check_imap=lambda host, user, password: _verify_imap(ImapSource(host, user, password)),
+        google_login=_google_login_flow,
+        vault_error=vault_error,
+    )
+    print("Einrichtung im Browser geöffnet (Abbrechen mit Strg+C). Einstellungen: " + str(path))
+    try:
+        _serve_page(session)
+    except KeyboardInterrupt:
+        pass
+    if not session.done:
+        print("Einrichtung nicht abgeschlossen. Was schon gespeichert wurde, bleibt erhalten.")
+        return 1
+    if not session.review_requested:
+        print("Einrichtung abgeschlossen. Erster Lauf: paperpilot run --source imap --browser")
+        return 0
+    run_args = build_parser().parse_args(["run", "--source", "imap", "--browser"])
+    run_args.rules = args.rules
+    return int(cmd_run(run_args))
 
 
 def cmd_eval(args: argparse.Namespace) -> int:
-    rules = load_rules(args.rules)
+    rules = _load_rules(args.rules)
     classifier = _classifier_or_exit(args.classifier, rules, default_credential_store())
     if classifier is None:
         return 2
@@ -254,6 +296,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="paperpilot", description="PaperPilot: Mails mit KI einsortieren und ablegen.")
     p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = p.add_subparsers(dest="cmd", required=True)
+
+    st = sub.add_parser("setup", help="Einrichtung im Browser: Postfach, KI, Kategorien, Ablageziel")
+    st.add_argument("--rules")
+    st.set_defaults(func=cmd_setup)
 
     d = sub.add_parser("demo", help="Komplettlauf auf anonymen Beispielmails")
     d.add_argument("--out", default="demo-ablage")

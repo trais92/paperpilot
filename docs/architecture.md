@@ -144,10 +144,15 @@ Google Drive als Ablageziel ([ADR 0008](adr/0008-google-drive-adapter.md)), nur 
 
 `composition.make_store()` wählt anhand von `[storage]` bzw. `--storage` zwischen `LocalStore` und `DriveStore`.
 
+### `settings.py`
+Persönliche Einstellungen aus dem Assistenten: `config_dir()` (Ordner je System), `load_settings()`/`save_settings()` (atomar) und `apply_settings()`, das `[storage]` und die Auswahl der Kategorien über die Regeln legt. Die CLI ruft es in `run` und `eval` auf.
+
 ### `web/`
-Bericht mit Freigabe als lokale Seite ([ADR 0009](adr/0009-bericht-mit-freigabe-im-browser.md)), nur Standardbibliothek, kein JavaScript.
+Lokale Seiten: Bericht mit Freigabe ([ADR 0009](adr/0009-bericht-mit-freigabe-im-browser.md)) und Einrichtungsassistent ([ADR 0010](adr/0010-persoenliche-einstellungen.md)), nur Standardbibliothek, kein JavaScript.
 
 - **`review.py`**: `ReviewSession` hält Mails und Plan eines Trockenlaufs, rendert die Seite (eine Auswahlliste pro Mail) und führt bei `approve()` mit `classify.FixedClassifier` aus, also mit genau den gezeigten und korrigierten Kategorien. Ohne HTTP testbar.
+- **`setup.py`**: `SetupSession`, der Einrichtungsassistent. Ein Formular pro Abschnitt; Zugangsdaten gehen in den Schlüsselbund, Kategorien und Ablageziel über `settings.py` in `settings.toml` ([ADR 0010](adr/0010-persoenliche-einstellungen.md)). Netz und Browser stecken in übergebenen Funktionen (`check_imap`, `google_login`).
+- **`page.py`**: Vertrag `LocalPage` (`token`, `finished`, `page()`, `submit()`), den beide Seiten erfüllen, dazu Maskierung und Layout.
 - **`server.py`**: `serve()` startet `ThreadingHTTPServer` auf `127.0.0.1:0`, öffnet den Browser und wartet auf Freigabe, Abbruch oder Zeitablauf. Token, Origin-Prüfung und CSP siehe [security.md](security.md#bericht-im-browser).
 
 ### `pipeline.py`
@@ -167,7 +172,7 @@ Bericht mit Freigabe als lokale Seite ([ADR 0009](adr/0009-bericht-mit-freigabe-
 Siehe [evaluation.md](evaluation.md).
 
 ### `cli.py`
-`argparse` mit den Unterbefehlen `demo`, `run`, `eval`, `init`, `login`, `logout`. `run --browser` übergibt den Trockenlauf an `web.serve()`. Demo- und Testdaten liegen als Paketdaten in `paperpilot_ops/data/` und funktionieren deshalb auch nach `pip install`.
+`argparse` mit den Unterbefehlen `setup`, `demo`, `run`, `eval`, `init`, `login`, `logout`. `run --browser` übergibt den Trockenlauf an `web.serve()`. Demo- und Testdaten liegen als Paketdaten in `paperpilot_ops/data/` und funktionieren deshalb auch nach `pip install`.
 
 ## Designentscheidungen
 

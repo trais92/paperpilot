@@ -2,6 +2,30 @@
 
 Alles, was PaperPilot entscheidet, steht in einer TOML-Datei: welche KI gefragt wird, welche Kategorien es gibt und wohin sie abgelegt werden. Ohne `--rules` wird die mitgelieferte [`default_rules.toml`](../src/paperpilot_ops/default_rules.toml) verwendet. `paperpilot init` kopiert sie als `rules.toml` zum Anpassen.
 
+## Persönliche Einstellungen (`settings.toml`)
+
+Was der Einrichtungsassistent (`paperpilot setup`) abfragt, landet nicht in der Regeldatei, sondern in einer eigenen kleinen Datei ([ADR 0010](adr/0010-persoenliche-einstellungen.md)):
+
+| System | Ort |
+|---|---|
+| Windows | `%APPDATA%\PaperPilot\settings.toml` |
+| macOS | `~/Library/Application Support/PaperPilot/settings.toml` |
+| Linux | `~/.config/paperpilot/settings.toml` (bzw. `$XDG_CONFIG_HOME`) |
+
+`PAPERPILOT_CONFIG_DIR` legt einen anderen Ordner fest. Inhalt, falls von Hand bearbeitet:
+
+```toml
+[storage]
+target = "local"          # oder "drive"
+target_dir = "D:/Ablage"
+drive_folder = "PaperPilot"
+
+[categories]              # true = ablegen, false = nur im Postfach lassen
+"bewerbung/absage" = false
+```
+
+Reihenfolge: Regeldatei, darüber `settings.toml`, darüber die Kommandozeile (`--storage`, `--target`). Gilt für `run` und `eval`, nicht für `demo`. Zugangsdaten stehen nie hier, sondern im Schlüsselbund.
+
 Stichwörter werden kleingeschrieben verglichen und als Teilstring gesucht (`"termin"` trifft auch „Terminbestätigung“).
 
 ## `[general]`

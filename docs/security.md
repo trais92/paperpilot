@@ -82,6 +82,18 @@ Entscheidung: [ADR 0009](adr/0009-bericht-mit-freigabe-im-browser.md). Die Seite
 | Genau das Gezeigte wird abgelegt | `FixedClassifier`, keine zweite KI-Anfrage; nur bekannte Kategorien; nur eine Freigabe | `test_correction_wins_and_is_marked`, `test_approve_only_once_and_cancel` |
 | Token nicht im Protokoll | Server protokolliert keine Adressen | `server.py` (`log_message`) |
 
+### Einrichtungsassistent
+
+Derselbe Server mit denselben Schutzmaßnahmen ([ADR 0010](adr/0010-persoenliche-einstellungen.md)).
+
+| Zusage | Umsetzung | Geprüft in |
+|---|---|---|
+| Passwörter und Schlüssel nur im Schlüsselbund | `SetupSession` schreibt sie über `MutableCredentialStore`; `settings.toml` kennt keine Zugangsdaten | `test_mail_is_checked_then_stored_and_never_shown`, `test_roundtrip_with_special_characters` |
+| Gespeicherte Geheimnisse werden nie angezeigt | Felder vom Typ `password` sind immer leer, Status nur „gespeichert“/„fehlt“ | `test_ai_key_is_stored_and_never_shown`, `test_google_connect_stores_tokens` |
+| Falsches Postfach-Passwort wird nicht gespeichert | Probe-Anmeldung (nur lesend) vor dem Speichern | `test_failed_imap_check_stores_nothing_and_hides_server_text` |
+| Fehlermeldungen ohne Werte | Serverantworten nur als Fehlertyp, Schlüsselbund-Fehler ohne Wert | `test_failed_imap_check_stores_nothing_and_hides_server_text`, `test_broken_keyring_message_has_no_value`, `test_google_errors` |
+| Fremde Seiten können nichts speichern | Token und Origin-Prüfung wie beim Bericht | `test_token_and_unknown_action`, `test_serve_setup_over_http` |
+
 ## Meldung von Schwachstellen
 
 Bitte nicht als öffentliches Issue, sondern über die private Sicherheitsmeldung von GitHub („Report a vulnerability“ im Reiter *Security* des Repositorys).

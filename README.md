@@ -26,6 +26,13 @@ paperpilot demo
 
 Es werden keine Zugangsdaten und keine zusätzlichen Pakete gebraucht, nur Python 3.11 oder neuer.
 
+Für das eigene Postfach führt ein Assistent im Browser durch die Einrichtung (Postfach, KI-Schlüssel, Kategorien, Ablageziel) und zeigt danach den ersten Lauf zur Freigabe:
+
+```bash
+pip install ".[keyring]"
+paperpilot setup
+```
+
 ## Was passiert
 
 Die Demo verarbeitet 15 frei erfundene Mails (Bewerbungen, Rechnungen, Verträge, Werbung, ein Duplikat, eine private Nachricht) und schreibt das Ergebnis nach `demo-ablage/`. Der Bericht meldet nur, was eine Handlung braucht:
@@ -221,6 +228,7 @@ schtasks /create /tn "paperpilot-mail" /sc daily /st 09:00 /tr "paperpilot run -
 
 | Befehl | Zweck | Wichtige Optionen |
 |---|---|---|
+| `paperpilot setup` | Einrichtung im Browser: Postfach, KI, Kategorien, Ablageziel | `--rules` |
 | `paperpilot demo` | Komplettlauf auf Beispieldaten | `--out DIR`, `--reset`, `--rules` |
 | `paperpilot run` | Postfach einsortieren (Standard: Trockenlauf) | `--source json\|imap`, `--input`, `--storage local\|drive`, `--target`, `--classifier ai\|rules`, `--since`, `--apply`, `--browser` |
 | `paperpilot eval` | Trefferquote messen | `--testset`, `--classifier`, `--min-accuracy` |

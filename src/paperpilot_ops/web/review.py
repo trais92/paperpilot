@@ -6,8 +6,7 @@ Jeder Wert aus einer Mail wird mit `html.escape` maskiert, weil Mails beliebigen
 
 from __future__ import annotations
 
-import html
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 from ..classify import UNCLEAR, FixedClassifier
@@ -15,6 +14,8 @@ from ..config import Rules
 from ..models import Classification, Mail, MailPlan
 from ..pipeline import RunResult, render_report, run
 from ..ports import StorageTarget
+from .page import FormError, UnknownAction, layout
+from .page import escape as _e
 
 CORRECTED = "vom Menschen korrigiert"
 
@@ -27,7 +28,7 @@ ACTION_TEXT = {
 }
 
 
-class ReviewError(ValueError):
+class ReviewError(FormError):
     """Ungültige Freigabe (falsches Token, unbekannte Kategorie). Es wurde nichts geschrieben."""
 
 
@@ -40,7 +41,6 @@ class ReviewSession:
     rules: Rules
     store: StorageTarget
     token: str
-    on_done: Callable[[], None] = lambda: None
     result: RunResult | None = None
     cancelled: bool = False
     labels: list[str] = field(init=False)
@@ -53,6 +53,15 @@ class ReviewSession:
         return self.result is not None or self.cancelled
 
     # -- Aktionen ------------------------------------------------------------------------------
+    def submit(self, action: str, form: Mapping[str, str]) -> None:
+        """Einstieg für den Server: `approve` oder `cancel`."""
+        if action == "approve":
+            self.approve(form)
+        elif action == "cancel":
+            self.cancel(form)
+        else:
+            raise UnknownAction(action)
+
     def approve(self, form: Mapping[str, str]) -> RunResult:
         """Führt den Plan mit den Korrekturen aus `form` aus (`label-<n>` je Mail)."""
         self._check(form)
@@ -64,13 +73,11 @@ class ReviewSession:
             same = label == p.classification.label
             decided[p.mail.id] = p.classification if same else Classification(label, 1.0, CORRECTED)
         self.result = run(self.mails, FixedClassifier(decided), self.rules, self.store, apply=True)
-        self.on_done()
         return self.result
 
     def cancel(self, form: Mapping[str, str]) -> None:
         self._check(form)
         self.cancelled = True
-        self.on_done()
 
     def _check(self, form: Mapping[str, str]) -> None:
         if self.finished:
@@ -83,7 +90,7 @@ class ReviewSession:
         if self.result is not None:
             return self._done_page(self.result)
         if self.cancelled:
-            return _layout("Abgebrochen", "<p>Nichts wurde geschrieben. Das Fenster kann geschlossen werden.</p>")
+            return layout("Abgebrochen", "<p>Nichts wurde geschrieben. Das Fenster kann geschlossen werden.</p>")
         return self._plan_page()
 
     def _plan_page(self) -> str:
@@ -107,7 +114,7 @@ Ziel: <strong>{_e(self.store.location)}</strong></p>
 <button type="submit" formaction="/cancel">Abbrechen</button>
 </div>
 </form>"""
-        return _layout("Lauf freigeben", body)
+        return layout("Lauf freigeben", body)
 
     def _row(self, n: int, p: MailPlan) -> str:
         c = p.classification
@@ -128,7 +135,7 @@ Ziel: <strong>{_e(self.store.location)}</strong></p>
 
     def _done_page(self, result: RunResult) -> str:
         report = render_report(result, self.store.location)
-        return _layout("Erledigt", f"<p>Der Lauf ist ausgeführt.</p><pre>{_e(report)}</pre>")
+        return layout("Erledigt", f"<p>Der Lauf ist ausgeführt.</p><pre>{_e(report)}</pre>")
 
 
 def _label_text(label: str) -> str:
@@ -137,33 +144,3 @@ def _label_text(label: str) -> str:
     if label == "werbung":
         return "werbung (nicht ablegen)"
     return label
-
-
-def _e(value: object) -> str:
-    return html.escape(str(value), quote=True)
-
-
-_STYLE = """
-:root{color-scheme:light dark;--bg:#fff;--fg:#1d1d1f;--muted:#6b6b70;--line:#e3e3e6;--accent:#2457d6}
-@media (prefers-color-scheme:dark){:root{--bg:#161618;--fg:#ececef;--muted:#a0a0a8;--line:#2c2c30;--accent:#7aa2ff}}
-body{margin:0;padding:24px 16px;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif}
-main{max-width:1100px;margin:auto}h1{font-size:22px;margin:0 0 8px}.lead{font-size:17px}
-table{width:100%;border-collapse:collapse;margin:16px 0}th,td{text-align:left;vertical-align:top;padding:8px;
-border-bottom:1px solid var(--line)}small{color:var(--muted)}ul{margin:4px 0 0;padding-left:18px}
-select{max-width:100%;font:inherit}tr.ignore,tr.duplicate,tr.skip{opacity:.6}
-.actions{display:flex;gap:12px;flex-wrap:wrap}button{font:inherit;padding:8px 16px;border-radius:8px;
-border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
-button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-pre{white-space:pre-wrap;background:color-mix(in srgb,var(--fg) 6%,transparent);padding:12px;border-radius:8px}
-@media (max-width:700px){thead{display:none}tr{display:block;padding:8px 0;border-bottom:1px solid var(--line)}
-td{display:block;border:0;padding:4px 0}}
-"""
-
-
-def _layout(title: str, body: str) -> str:
-    return (
-        "<!doctype html><html lang='de'><head><meta charset='utf-8'>"
-        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        f"<title>PaperPilot: {_e(title)}</title><style>{_STYLE}</style></head>"
-        f"<body><main><h1>{_e(title)}</h1>{body}</main></body></html>"
-    )

@@ -2,9 +2,9 @@
 
 import http.client
 import threading
-import urllib.parse
 
 import pytest
+from fakes import browser_clicking, post_form, request
 
 from paperpilot_ops import cli
 from paperpilot_ops.classify import RuleClassifier
@@ -55,10 +55,8 @@ def test_mail_content_is_escaped(rules, make_mail):
 
 def test_approve_without_changes_runs_plan(rules, make_mail):
     session = _session(rules, _mails(make_mail))
-    calls = []
-    session.on_done = lambda: calls.append("fertig")
     result = session.approve({"token": TOKEN, **_labels(session)})
-    assert result.applied and calls == ["fertig"]
+    assert result.applied and session.finished
     assert any("Rechnung" in path for path in session.store.files)
     assert "Erledigt" in session.page() and "ÜBERSICHTEN" in session.page()
 
@@ -126,31 +124,13 @@ def server(rules, make_mail):
     httpd.server_close()
 
 
-def _request(port, method, path, body=None, headers=None):
-    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
-    conn.request(method, path, body=body, headers=headers or {})
-    response = conn.getresponse()
-    data = response.read().decode("utf-8")
-    conn.close()
-    return response, data
-
-
-def _post(port, path, form, origin="same"):
-    headers = {"Content-Type": "application/x-www-form-urlencoded"}
-    if origin == "same":
-        headers["Origin"] = f"http://127.0.0.1:{port}"
-    elif origin:
-        headers["Origin"] = origin
-    return _request(port, "POST", path, urllib.parse.urlencode(form), headers)
-
-
 def test_get_needs_token_and_sets_security_headers(server):
     session, port = server
-    response, _ = _request(port, "GET", "/")
+    response, _ = request(port, "GET", "/")
     assert response.status == 404
-    response, _ = _request(port, "GET", "/?token=falsch")
+    response, _ = request(port, "GET", "/?token=falsch")
     assert response.status == 404
-    response, body = _request(port, "GET", f"/?token={TOKEN}")
+    response, body = request(port, "GET", f"/?token={TOKEN}")
     assert response.status == 200 and "Lauf freigeben" in body
     for key, value in SECURITY_HEADERS.items():
         assert response.getheader(key) == value
@@ -159,15 +139,15 @@ def test_get_needs_token_and_sets_security_headers(server):
 
 def test_foreign_origin_is_rejected(server):
     session, port = server
-    response, _ = _post(port, "/approve", {"token": TOKEN}, origin="http://boese.example")
+    response, _ = post_form(port, "/approve", {"token": TOKEN}, origin="http://boese.example")
     assert response.status == 403 and session.result is None and session.store.files == {}
 
 
 def test_wrong_token_and_unknown_path(server):
     session, port = server
-    response, _ = _post(port, "/approve", {"token": "falsch"})
+    response, _ = post_form(port, "/approve", {"token": "falsch"})
     assert response.status == 400
-    response, _ = _post(port, "/loeschen", {"token": TOKEN})
+    response, _ = post_form(port, "/loeschen", {"token": TOKEN})
     assert response.status == 404
     assert session.result is None
 
@@ -187,50 +167,31 @@ def test_oversized_form_is_rejected(server):
 
 def test_approve_redirects_to_result(server):
     session, port = server
-    response, _ = _post(port, "/approve", {"token": TOKEN, **_labels(session)})
+    response, _ = post_form(port, "/approve", {"token": TOKEN, **_labels(session)})
     assert response.status == 303
     assert response.getheader("Location") == f"/?token={TOKEN}"
-    response, body = _request(port, "GET", f"/?token={TOKEN}")
+    response, body = request(port, "GET", f"/?token={TOKEN}")
     assert "Erledigt" in body and session.result is not None
 
 
 def test_cancel_over_http(server):
     session, port = server
-    response, _ = _post(port, "/cancel", {"token": TOKEN}, origin=None)  # ohne Origin (ältere Browser)
+    response, _ = post_form(port, "/cancel", {"token": TOKEN}, origin=None)  # ohne Origin (ältere Browser)
     assert response.status == 303 and session.cancelled
 
 
 # -- serve() und CLI ---------------------------------------------------------------------------------
 
 
-def _browser(action):
-    """Ersetzt den Browser: lädt die Seite und schickt das Formular in einem eigenen Thread."""
-
-    def open_browser(url):
-        parts = urllib.parse.urlsplit(url)
-        assert parts.hostname == "127.0.0.1"
-        token = dict(urllib.parse.parse_qsl(parts.query))["token"]
-
-        def click():
-            _request(parts.port, "GET", f"/?{parts.query}")
-            if action:
-                _post(parts.port, f"/{action}", {"token": token})
-                _request(parts.port, "GET", f"/?{parts.query}")
-
-        threading.Thread(target=click, daemon=True).start()
-
-    return open_browser
-
-
 def test_serve_until_approved(rules, make_mail):
     session = _session(rules, _mails(make_mail))
-    serve(session, _browser("approve"), timeout=10, grace=5)
+    serve(session, browser_clicking("approve"), timeout=10, grace=5)
     assert session.result is not None and session.result.applied
 
 
 def test_serve_times_out_without_writing(rules, make_mail):
     session = _session(rules, _mails(make_mail))
-    serve(session, _browser(None), timeout=0.3)
+    serve(session, browser_clicking(None), timeout=0.3)
     assert session.result is None and session.store.files == {}
 
 
@@ -244,14 +205,14 @@ def no_secrets(monkeypatch):
 
 
 def test_cli_browser_approval_applies(monkeypatch, capsys, tmp_path, no_secrets):
-    monkeypatch.setattr(cli, "_serve_review", lambda s: s.approve({"token": s.token}))
+    monkeypatch.setattr(cli, "_serve_page", lambda s: s.approve({"token": s.token}))
     assert cli.main(_run_args(tmp_path)) == 0
     assert "ÜBERSICHTEN" in capsys.readouterr().out
     assert any(tmp_path.iterdir())
 
 
 def test_cli_browser_cancel_writes_nothing(monkeypatch, capsys, tmp_path, no_secrets):
-    monkeypatch.setattr(cli, "_serve_review", lambda s: s.cancel({"token": s.token}))
+    monkeypatch.setattr(cli, "_serve_page", lambda s: s.cancel({"token": s.token}))
     assert cli.main(_run_args(tmp_path)) == 1
     assert "nichts wurde geschrieben" in capsys.readouterr().out
     assert not any(tmp_path.iterdir())
@@ -261,7 +222,7 @@ def test_cli_browser_ctrl_c_writes_nothing(monkeypatch, tmp_path, no_secrets):
     def interrupt(session):
         raise KeyboardInterrupt
 
-    monkeypatch.setattr(cli, "_serve_review", interrupt)
+    monkeypatch.setattr(cli, "_serve_page", interrupt)
     assert cli.main(_run_args(tmp_path)) == 1
     assert not any(tmp_path.iterdir())
 
@@ -274,5 +235,5 @@ def test_cli_browser_and_apply_exclude_each_other(tmp_path):
 def test_cli_browser_without_new_mails_skips_page(monkeypatch, capsys, tmp_path, no_secrets):
     empty = tmp_path / "leer.json"
     empty.write_text("[]", "utf-8")
-    monkeypatch.setattr(cli, "_serve_review", lambda s: pytest.fail("ohne Mails keine Seite"))
+    monkeypatch.setattr(cli, "_serve_page", lambda s: pytest.fail("ohne Mails keine Seite"))
     assert cli.main([*_run_args(tmp_path / "ablage"), "--input", str(empty)]) == 0

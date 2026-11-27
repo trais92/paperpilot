@@ -1,4 +1,6 @@
-"""Dünner HTTP-Server für den Bericht mit Freigabe. Nur Standardbibliothek, kein JavaScript.
+"""Dünner HTTP-Server für die lokalen Seiten (Freigabe, Einrichtung). Nur Standardbibliothek, kein JavaScript.
+
+Er kennt nur den Vertrag `page.LocalPage`: `GET /` zeigt `page()`, `POST /<aktion>` ruft `submit()`.
 
 Schutzmaßnahmen (docs/security.md, ADR 0009):
 - lauscht nur auf 127.0.0.1, Port zufällig;
@@ -15,10 +17,13 @@ import http.server
 import threading
 import urllib.parse
 from collections.abc import Callable
+from typing import TypeVar
 
-from .review import ReviewError, ReviewSession
+from .page import FormError, LocalPage, UnknownAction
 
 __all__ = ["MAX_FORM_BYTES", "SECURITY_HEADERS", "make_handler", "review_url", "serve"]
+
+P = TypeVar("P", bound=LocalPage)
 
 MAX_FORM_BYTES = 1_000_000
 SECURITY_HEADERS = {
@@ -30,14 +35,16 @@ SECURITY_HEADERS = {
 }
 
 
-class _NotFound(Exception):
-    pass
-
-
 def make_handler(
-    session: ReviewSession, on_final_page: Callable[[], None] = lambda: None
+    session: LocalPage,
+    on_final_page: Callable[[], None] = lambda: None,
+    on_submit: Callable[[], None] = lambda: None,
 ) -> type[http.server.BaseHTTPRequestHandler]:
-    """Request-Handler für eine Sitzung. `on_final_page` läuft, sobald die Ergebnisseite ausgeliefert ist."""
+    """Request-Handler für eine Seite.
+
+    `on_final_page` läuft, sobald die Seite eines abgeschlossenen Laufs ausgeliefert ist,
+    `on_submit` nach jedem angenommenen Formular.
+    """
     lock = threading.Lock()  # zwei gleichzeitige Freigaben dürfen nicht zweimal ausführen
 
     class Handler(http.server.BaseHTTPRequestHandler):
@@ -64,15 +71,17 @@ def make_handler(
                 self._send(413, "Formular zu groß oder ohne Länge.")
                 return
             form = dict(urllib.parse.parse_qsl(self.rfile.read(length).decode("utf-8", "replace")))
+            action = urllib.parse.urlsplit(self.path).path.strip("/")
             try:
                 with lock:
-                    self._dispatch(form)
-            except ReviewError as exc:
+                    session.submit(action, form)
+            except FormError as exc:
                 self._send(400, str(exc))
                 return
-            except _NotFound:
+            except UnknownAction:
                 self._send(404, "Nicht gefunden.")
                 return
+            on_submit()
             # Post/Redirect/Get: die Ergebnisseite lässt sich neu laden, ohne erneut abzusenden
             self.send_response(303)
             self.send_header("Location", f"/?token={urllib.parse.quote(session.token)}")
@@ -80,14 +89,6 @@ def make_handler(
             for key, value in SECURITY_HEADERS.items():
                 self.send_header(key, value)
             self.end_headers()
-
-        def _dispatch(self, form: dict[str, str]) -> None:
-            if self.path == "/approve":
-                session.approve(form)
-            elif self.path == "/cancel":
-                session.cancel(form)
-            else:
-                raise _NotFound
 
         def _send(self, status: int, body: str, content_type: str = "text/plain; charset=utf-8") -> None:
             data = body.encode("utf-8")
@@ -110,34 +111,32 @@ def review_url(port: int, token: str) -> str:
 
 
 def serve(
-    session: ReviewSession,
+    session: P,
     open_browser: Callable[[str], object],
     timeout: float = 1800.0,
     grace: float = 10.0,
-) -> ReviewSession:
+) -> P:
     """Startet den Server, öffnet den Browser und wartet auf Freigabe, Abbruch oder Zeitablauf.
 
-    Nach dem Ende bleibt der Server höchstens `grace` Sekunden offen, damit der Browser die
-    Ergebnisseite noch laden kann. Läuft `timeout` ab, wurde nichts geschrieben.
+    `timeout` zählt ab dem Start und nach jedem angenommenen Formular neu; läuft er ab, endet die
+    Seite ohne Abschluss (beim Bericht: nichts geschrieben). Nach dem Abschluss bleibt der Server
+    höchstens `grace` Sekunden offen, damit der Browser die Ergebnisseite noch laden kann.
     """
-    finished = threading.Event()
     shown = threading.Event()
-    previous = session.on_done
-
-    def on_done() -> None:
-        previous()
-        finished.set()
-
-    session.on_done = on_done
-    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), make_handler(session, shown.set))
+    activity = threading.Event()
+    handler = make_handler(session, shown.set, activity.set)
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
         open_browser(review_url(server.server_address[1], session.token))
-        if finished.wait(timeout):
+        while not session.finished:
+            if not activity.wait(timeout):
+                break  # Zeit ohne Eingabe abgelaufen
+            activity.clear()
+        if session.finished:
             shown.wait(grace)
     finally:
         server.shutdown()
         server.server_close()
-        session.on_done = previous
     return session

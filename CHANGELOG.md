@@ -2,6 +2,12 @@
 
 ## Unveröffentlicht
 
+### Einrichtungsassistent im Browser (Roadmap 8)
+
+- `paperpilot setup`: lokale Seite für Postfach (mit Probe-Anmeldung), Groq-Schlüssel, Kategorien, Ablageziel (lokal oder Google Drive inkl. Anmeldung) und Zeitplan-Befehle; danach auf Wunsch direkt der erste Lauf zur Freigabe.
+- Persönliche Einstellungen in `settings.toml` im Konfigurationsordner des Systems, über die Regeln gelegt (`settings.py`); Zugangsdaten weiter nur im Schlüsselbund.
+- Server der lokalen Seiten verallgemeinert (`web/page.py`, Vertrag `LocalPage`). ADR 0010, Sicherheitskonzept und Konfigurationsdoku erweitert.
+
 ### Bericht mit Freigabe im Browser (Roadmap 6)
 
 - `paperpilot run --browser`: lokale Seite mit dem Plan, Kategorien pro Mail korrigierbar, „Freigeben und ablegen“ führt aus, „Abbrechen“ schreibt nichts.

@@ -236,7 +236,9 @@ class SetupSession:
             '<label>Groq-API-Schlüssel<br><input type="password" name="groq_key"></label>'
             f'<small>Kostenlos und ohne Kreditkarte: bei <a href="{GROQ_KEYS_URL}" target="_blank" '
             'rel="noopener noreferrer">console.groq.com</a> anmelden und einen Schlüssel erstellen. '
-            "Was an die KI geht, steht in docs/ai-providers.md.</small>"
+            "Was an die KI geht, steht in docs/ai-providers.md.<br>Claude ist ebenfalls möglich, aber "
+            "<strong>kostenpflichtig</strong> (eigener Schlüssel, Abrechnung beim Anbieter) und deshalb hier "
+            "nicht voreingestellt: paperpilot login --ai claude.</small>"
         )
         status = self._status(self._has("groq_api_key"))
         return f"<section><h2>2. KI {status}</h2>{self._form('ai', inner, 'Speichern')}</section>"

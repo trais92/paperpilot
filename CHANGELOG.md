@@ -2,6 +2,10 @@
 
 ## Unveröffentlicht
 
+### Claude als kostenpflichtig gekennzeichnet
+
+- Hilfe von `login --ai`, Anmeldung, jeder Lauf mit gespeichertem Claude-Schlüssel, Einrichtungsassistent, Standardregeln und Doku weisen deutlich auf die Kosten hin (`PAID_PROVIDERS`).
+
 ### Testset mit Angaben und Dev/Holdout (Roadmap 5)
 
 - `data/testset.jsonl`: 208 erfundene Mails mit erwarteten Angaben, 28 PDF-Anhängen (davon 4 Scans) und Aufteilung `dev`/`holdout` nach Vorlage; erzeugt von `tools/make_testset.py`, ein Test prüft die Übereinstimmung.

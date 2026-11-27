@@ -1,10 +1,13 @@
 """KI-Klassifizierer: Prompt, strenge Prüfung der Antwort, Vorfilter, Verdrahtung in der CLI."""
 
+from dataclasses import replace
+
 import pytest
 from fakes import FakeTransport, ScriptedModel, chat_response
 
 from paperpilot_ops import cli
 from paperpilot_ops.ai import AIClassifier, PrefilteredClassifier
+from paperpilot_ops.ai.providers import describe_provider
 from paperpilot_ops.classify import UNCLEAR, RuleClassifier
 from paperpilot_ops.composition import describe_classifier, make_classifier
 from paperpilot_ops.credentials import EnvCredentialStore
@@ -161,3 +164,29 @@ def test_eval_with_ai_without_key(monkeypatch, capsys):
 def test_describe_unknown_classifier(rules):
     assert describe_classifier(RuleClassifier(rules)) == "Regeln (ohne KI)"
     assert describe_classifier(object()) == "object"
+
+
+def test_describe_provider_marks_paid():
+    assert describe_provider("groq") == "groq (kostenlos)"
+    assert "kostenpflichtig" in describe_provider("claude")
+
+
+def test_run_with_paid_provider_shows_notice(monkeypatch, capsys, tmp_path, rules):
+    creds = EnvCredentialStore({"PAPERPILOT_GROQ_API_KEY": "g", "PAPERPILOT_CLAUDE_API_KEY": "c"})
+    monkeypatch.setattr(cli, "default_credential_store", lambda: creds)
+    monkeypatch.setattr(cli, "make_classifier", lambda name, rules, creds: RuleClassifier(rules))
+    monkeypatch.setattr(cli, "_load_rules", lambda path: _with_fallback(rules, ("claude",)))
+    assert cli.main(["run", "--target", str(tmp_path)]) == 0
+    assert "Hinweis: claude (kostenpflichtig" in capsys.readouterr().out
+
+
+def test_run_without_paid_key_shows_no_notice(monkeypatch, capsys, tmp_path, rules):
+    monkeypatch.setattr(cli, "default_credential_store", lambda: EnvCredentialStore({"PAPERPILOT_GROQ_API_KEY": "g"}))
+    monkeypatch.setattr(cli, "make_classifier", lambda name, rules, creds: RuleClassifier(rules))
+    monkeypatch.setattr(cli, "_load_rules", lambda path: _with_fallback(rules, ("claude",)))
+    assert cli.main(["run", "--target", str(tmp_path)]) == 0
+    assert "kostenpflichtig" not in capsys.readouterr().out
+
+
+def _with_fallback(rules, fallback):
+    return replace(rules, ai=replace(rules.ai, fallback=fallback))

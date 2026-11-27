@@ -99,6 +99,11 @@ def test_ai_key_is_stored_and_never_shown(rules, tmp_path, keyring):
     assert "Kein Schlüssel" in session.page()
 
 
+def test_claude_is_shown_as_paid_and_not_preset(rules, tmp_path, keyring):
+    page = _session(rules, tmp_path, keyring).page()
+    assert "<strong>kostenpflichtig</strong>" in page and 'name="claude' not in page
+
+
 def test_without_keyring_nothing_is_stored_and_reason_is_shown(rules, tmp_path):
     session = _session(rules, tmp_path, vault_error="Kein Schlüsselbund auf diesem System gefunden.")
     session.submit("ai", {"token": TOKEN, "groq_key": GROQ_KEY})

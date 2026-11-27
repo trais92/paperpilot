@@ -52,7 +52,7 @@ Stichwörter werden kleingeschrieben verglichen und als Teilstring gesucht (`"te
 
 | Feld | Typ | Standard | Bedeutung |
 |---|---|---|---|
-| `provider` | String | `"groq"` | Anbieter, der zuerst gefragt wird: `groq` (kostenlos) oder `claude` (eigener Schlüssel) |
+| `provider` | String | `"groq"` | Anbieter, der zuerst gefragt wird: `groq` (kostenlos) oder `claude` (**kostenpflichtig**, eigener Schlüssel) |
 | `fallback` | Liste | `[]` | Reserve, der Reihe nach. Anbieter ohne Schlüssel werden übersprungen |
 | `min_confidence` | Zahl 0–1 | `0.6` | Darunter wird `unklar` vergeben |
 | `read_pdfs` | Bool | `true` | Text von PDF-Anhängen mitsenden (braucht `pip install ".[pdf]"`); `false` lässt Anhänge auf dem Rechner |

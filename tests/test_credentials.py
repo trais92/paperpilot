@@ -273,3 +273,16 @@ def test_login_ai_empty_key_stores_nothing(vault, monkeypatch):
     monkeypatch.setattr("getpass.getpass", lambda *_: "")
     assert cli.main(["login", "--ai", "claude"]) == 1
     assert vault.get("claude_api_key") is None
+
+
+def test_login_claude_is_marked_as_paid(vault, monkeypatch, capsys):
+    monkeypatch.setattr("getpass.getpass", lambda *_: "sk-ant-schluessel")
+    assert cli.main(["login", "--ai", "claude"]) == 0
+    out = capsys.readouterr().out
+    assert "kostenpflichtig" in out and "paperpilot login --ai groq" in out
+
+
+def test_login_groq_has_no_cost_notice(vault, monkeypatch, capsys):
+    monkeypatch.setattr("getpass.getpass", lambda *_: "gsk")
+    assert cli.main(["login", "--ai", "groq"]) == 0
+    assert "kostenpflichtig" not in capsys.readouterr().out

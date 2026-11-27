@@ -17,7 +17,7 @@ from typing import TextIO
 
 from . import __version__
 from .ai import MissingAIKeyError
-from .ai.providers import credential_key
+from .ai.providers import PAID_PROVIDERS, credential_key, describe_provider
 from .composition import CLASSIFIERS, MissingGoogleLoginError, describe_classifier, make_classifier, make_store
 from .config import AI_PROVIDERS, STORAGE_TARGETS, Rules, default_rules_text, load_rules
 from .credentials import KEYS, CredentialStoreError, KeyringCredentialStore, default_credential_store
@@ -113,6 +113,8 @@ def cmd_login(args: argparse.Namespace) -> int:
 
 def _login_ai(vault: MutableCredentialStore, provider: str) -> int:
     """API-Schlüssel eines KI-Anbieters im Schlüsselbund speichern."""
+    if provider in PAID_PROVIDERS:
+        print(f"Hinweis: {describe_provider(provider)}. Kostenlos ist: paperpilot login --ai groq")
     api_key = getpass.getpass(f"API-Schlüssel für {provider}: ").strip()
     if not api_key:
         print("Kein Schlüssel eingegeben. Nichts gespeichert.", file=sys.stderr)
@@ -180,6 +182,9 @@ def _classifier_or_exit(
         print(f"{exc}\nOhne KI (nur Stichwörter): --classifier rules", file=sys.stderr)
         return None
     print(f"Sortiert mit: {describe_classifier(classifier)}", file=out or sys.stdout)
+    paid = [p for p in rules.ai.chain if p in PAID_PROVIDERS and creds.get(credential_key(p))]
+    if name == "ai" and paid:
+        print(f"Hinweis: {', '.join(map(describe_provider, paid))}.", file=out or sys.stdout)
     return classifier
 
 
@@ -351,7 +356,12 @@ def build_parser() -> argparse.ArgumentParser:
     lg = sub.add_parser("login", help="Postfach-Zugang oder KI-Schlüssel im Schlüsselbund speichern")
     lg.add_argument("--status", action="store_true", help="nur anzeigen, was gespeichert ist (ohne Werte)")
     lg.add_argument("--no-check", action="store_true", help="ohne Probe-Anmeldung speichern")
-    lg.add_argument("--ai", choices=AI_PROVIDERS, help="statt des Postfachs den API-Schlüssel dieses KI-Anbieters")
+    lg.add_argument(
+        "--ai",
+        choices=AI_PROVIDERS,
+        help="statt des Postfachs den API-Schlüssel dieses KI-Anbieters: groq (kostenlos) "
+        "oder claude (kostenpflichtig, eigener Schlüssel)",
+    )
     lg.add_argument("--google", action="store_true", help="statt des Postfachs Google Drive verbinden")
     lg.set_defaults(func=cmd_login)
 

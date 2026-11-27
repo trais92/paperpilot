@@ -32,6 +32,17 @@ OPENAI_COMPATIBLE: dict[str, OpenAICompatibleProvider] = {
 }
 
 
+# Anbieter, die über den eigenen Schlüssel abgerechnet werden. Überall, wo sie auftauchen
+# (Hilfe, Anmeldung, Lauf, Assistent, Doku), steht deutlich „kostenpflichtig“ dabei.
+PAID_PROVIDERS = frozenset({"claude"})
+PAID_NOTICE = "kostenpflichtig, Abrechnung über deinen eigenen Schlüssel beim Anbieter"
+
+
+def describe_provider(provider: str) -> str:
+    """`groq (kostenlos)` bzw. `claude (kostenpflichtig, …)` für Hilfe und Hinweise."""
+    return f"{provider} ({PAID_NOTICE if provider in PAID_PROVIDERS else 'kostenlos'})"
+
+
 class MissingAIKeyError(RuntimeError):
     """Für keinen der konfigurierten Anbieter ist ein Schlüssel hinterlegt."""
 

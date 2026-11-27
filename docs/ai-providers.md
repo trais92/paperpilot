@@ -13,7 +13,7 @@ Voreingestellt wird nur, was **ohne Kreditkarte und ohne Abrechnung** dauerhaft 
 | Groq | voreingestellt | kostenloser Tarif mit Kontingent, keine Kreditkarte | `openai/gpt-oss-20b` | OpenAI-kompatibel, ohne Zusatzpaket |
 | Claude (Anthropic) | optional | kostenpflichtig, eigener Schlüssel | `claude-opus-5-5` | offizielles SDK, Extra `[llm]` |
 
-Die Reihenfolge steht in der Konfiguration (`[ai]`, siehe [configuration.md](configuration.md#ai)). Wer einen Claude-Schlüssel hat, kann ihn mit `fallback = ["claude"]` als Reserve eintragen. Anbieter ohne gespeicherten Schlüssel werden übersprungen. Antwortet kein Anbieter, landet die Mail als `unklar` im Eingang und wird beim nächsten Lauf erneut versucht.
+Die Reihenfolge steht in der Konfiguration (`[ai]`, siehe [configuration.md](configuration.md#ai)). Wer einen (kostenpflichtigen) Claude-Schlüssel hat, kann ihn mit `fallback = ["claude"]` als Reserve eintragen. Anbieter ohne gespeicherten Schlüssel werden übersprungen. Antwortet kein Anbieter, landet die Mail als `unklar` im Eingang und wird beim nächsten Lauf erneut versucht.
 
 ## Geprüfte, aber nicht aufgenommene Anbieter
 
@@ -40,7 +40,7 @@ paperpilot run                    # Trockenlauf mit KI
 Ohne Schlüsselbund: Umgebungsvariable `PAPERPILOT_GROQ_API_KEY` (bzw. `PAPERPILOT_CLAUDE_API_KEY`).
 
 - **Groq:** Konto auf console.groq.com anlegen, unter *API Keys* einen Schlüssel erzeugen. Keine Kreditkarte nötig.
-- **Claude (optional):** Konto auf platform.claude.com, Schlüssel erzeugen, `pip install ".[llm]"`, `paperpilot login --ai claude`.
+- **Claude (optional, kostenpflichtig):** Abrechnung über den eigenen Schlüssel bei Anthropic; PaperPilot weist bei Anmeldung und jedem Lauf darauf hin. Konto auf platform.claude.com, Schlüssel erzeugen, `pip install ".[llm]"`, `paperpilot login --ai claude`.
 
 ## Was gesendet wird
 

@@ -103,7 +103,7 @@ flowchart LR
     subgraph Pipeline
         F[Abruf<br/>seit letztem Lauf] --> V{Vorfilter<br/>Regeln}
         V -->|Werbung| D[Duplikat-Check<br/>SHA-256]
-        V -->|alles andere| L[KI<br/>Groq gratis<br/>oder Claude]
+        V -->|alles andere| L[KI<br/>Groq gratis<br/>oder Claude kostenpflichtig]
         L -->|geprüfte Antwort<br/>oder unklar| D
         D --> P[Plan]
     end
@@ -237,7 +237,7 @@ schtasks /create /tn "paperpilot-mail" /sc daily /st 09:00 /tr "paperpilot run -
 | `paperpilot run` | Postfach einsortieren (Standard: Trockenlauf) | `--source json\|imap`, `--input`, `--storage local\|drive`, `--target`, `--classifier ai\|rules`, `--since`, `--apply`, `--browser` |
 | `paperpilot eval` | Trefferquote messen | `--testset`, `--classifier`, `--min-accuracy` |
 | `paperpilot init` | Regeldatei anlegen | `--path` |
-| `paperpilot login` | Postfach-Zugang oder KI-Schlüssel im Schlüsselbund speichern | `--ai groq\|claude`, `--google`, `--status`, `--no-check` |
+| `paperpilot login` | Postfach-Zugang oder KI-Schlüssel im Schlüsselbund speichern | `--ai groq\|claude` (claude kostenpflichtig), `--google`, `--status`, `--no-check` |
 | `paperpilot logout` | Gespeicherte Zugangsdaten löschen | |
 
 ## Entwicklung

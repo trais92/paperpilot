@@ -15,6 +15,15 @@ Stichwörter werden kleingeschrieben verglichen und als Teilstring gesucht (`"te
 | `tracker` | String | `"Bewerbungen/tracker.csv"` | Pfad des Trackers, relativ zur Ablage |
 | `generic_domains` | Liste | gmail.com, gmx.de, web.de, … | Hier wird der Anzeigename statt der Domain als Absender genutzt |
 
+## `[storage]`
+
+| Feld | Typ | Standard | Bedeutung |
+|---|---|---|---|
+| `target` | String | `"local"` | `"local"`: Ordner aus `target_dir` bzw. `--target`. `"drive"`: Google Drive (vorher `paperpilot login --google`) |
+| `drive_folder` | String | `"PaperPilot"` | Wurzelordner in „Meine Ablage“, ein einzelner Name ohne `/` |
+
+`paperpilot run --storage local|drive` überschreibt `target` für einen Lauf. Einrichtung: [google-drive.md](google-drive.md).
+
 ## `[ai]`
 
 | Feld | Typ | Standard | Bedeutung |

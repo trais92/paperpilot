@@ -8,15 +8,16 @@ Eine Python-CLI, die Mails klassifiziert, Mails und Anhänge nach Namenskonventi
 
 Ziel (siehe [docs/roadmap.md](docs/roadmap.md)): Eine fest eingebaute KI erkennt Kategorie und Angaben jeder Mail, abgelegt wird in einer Ordnerstruktur aus wählbaren Kategorien, lokal oder in Google Drive, bedienbar ohne Terminal über eine lokale Seite im Browser.
 
-## Stand (v0.1.0 + Roadmap 0–3, 27.11.2026)
+## Stand (v0.1.0 + Roadmap 0–3 und 7, 27.11.2026)
 
 - Kern fertig und getestet: Quellen (JSON, IMAP lesend), Regel-Klassifizierer, Namenskonvention, Fristen + iCalendar, Ablage mit Duplikat-Index und Lauf-Stand, Tracker, Bericht, Evaluation, CLI (`demo`, `run`, `eval`, `init`).
 - Phase 0 (Architektur-Grundlage) erledigt: Ports in `ports.py` (`MailSource`, `Classifier`, `StorageTarget`, `CredentialStore`), `MemoryStore`, `EnvCredentialStore`, Vertragstest für Ablageziele, ADR 0001 bis 0006.
 - Roadmap 1 erledigt: Zugangsdaten im Schlüsselbund (`paperpilot login`/`logout`, `KeyringCredentialStore`), Sicherheitskonzept in [docs/security.md](docs/security.md).
-- 138 Tests grün, Abdeckung 95 %, `ruff` und `mypy --strict` sauber. CI auf Python 3.11 bis 3.13 prüft zusätzlich Format, Abdeckung ≥ 85 %, Demo-Lauf und `eval --min-accuracy 0.85`.
+- 177 Tests grün, Abdeckung 96 %, `ruff` und `mypy --strict` sauber. CI auf Python 3.11 bis 3.13 prüft zusätzlich Format, Abdeckung ≥ 85 %, Demo-Lauf und `eval --min-accuracy 0.85`.
 - Evaluation Regeln: 90,4 % Label, 94,2 % Gruppe, 11,5 % `unklar` auf 52 Mails. Siehe [docs/evaluation.md](docs/evaluation.md).
 - Roadmap 2 erledigt: KI-Schicht in `ai/` (Port `LanguageModel`, Groq voreingestellt und einziger Gratis-Anbieter, Claude optional mit eigenem Schlüssel), Vorfilter, strenge Antwortprüfung, `paperpilot login --ai`. Standard Groq von Kai bestätigt ([ADR 0007](docs/adr/0007-ki-schicht-mit-austauschbaren-modellen.md)).
 - Roadmap 3 erledigt: `enabled` an Kategorien/Gruppen (Aktion `skip`), Übersichtstabelle pro Zielordner über `StorageTarget.append_rows`.
+- Roadmap 7 erledigt: Google Drive als Ablageziel (`drive/`, `DriveStore`, `paperpilot login --google`, `[storage]`), [ADR 0008](docs/adr/0008-google-drive-adapter.md). Nicht gegen echtes Drive getestet; braucht einen OAuth-Client (Desktop-App), siehe `docs/google-drive.md`.
 - **Nicht verifiziert:** alle KI-Adapter gegen die echten Schnittstellen (nur Attrappen in `tests/test_ai_models.py`). Beim ersten echten Lauf prüfen: Groq mit `response_format: json_object` und `openai/gpt-oss-20b`; Claude mit `client.beta.messages.create`, `betas=["server-side-fallback-2026-07-01"]`, `fallbacks="default"`. Notfalls `fallbacks`/`betas` in `ai/anthropic.py` entfernen. Nur Anbieter ohne Kreditkarte/Abrechnung werden voreingestellt (Kai, 27.11.2026); geprüfte Kandidaten in `docs/ai-providers.md`.
 - Paketname `paperpilot-ops` (PyPI-Name `paperpilot` ist vergeben), Importpaket `paperpilot_ops`, Befehl `paperpilot`. Repo: `trais92/paperpilot`.
 
@@ -62,6 +63,7 @@ Bei Regeländerungen (`default_rules.toml`) immer `paperpilot eval` vorher und n
 | `src/paperpilot_ops/default_rules.toml` | Standardregeln | Paketdaten, in `pyproject.toml` gelistet |
 | `src/paperpilot_ops/deadlines.py` | Fristen, `.ics` | Satz-Split darf Datumspunkte nicht trennen |
 | `src/paperpilot_ops/store.py` | `LocalStore`, `MemoryStore`, Übersichtstabellen, Tracker, Fristen | Tabellen nur über `append_rows`, Tracker/Fristen über `read_text`/`write_text`, nie über Pfade; Metadaten in `.paperpilot/` |
+| `src/paperpilot_ops/drive/` | `oauth.py` (PKCE, Rückruf 127.0.0.1), `api.py` (`DriveApi`), `store.py` (`DriveStore`) | Nur Scope `drive.file`; nie eine Lösch-Methode einbauen; Tests gegen `tests/fake_drive.py` |
 | `src/paperpilot_ops/naming.py` | Dateinamen, Firmenname | Ändert sich die Konvention, ändern sich Hashes nicht (Hash über Inhalt) |
 | `src/paperpilot_ops/evaluate.py` | Metriken, Bericht | |
 | `src/paperpilot_ops/data/` | `demo_inbox.json`, `eval_set.jsonl` | Nur erfundene Daten |

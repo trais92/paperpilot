@@ -39,6 +39,9 @@ KEYS: Mapping[str, str] = {
     "imap_password": "PAPERPILOT_IMAP_PASSWORD",
     "groq_api_key": "PAPERPILOT_GROQ_API_KEY",
     "claude_api_key": "PAPERPILOT_CLAUDE_API_KEY",
+    "google_client_id": "PAPERPILOT_GOOGLE_CLIENT_ID",
+    "google_client_secret": "PAPERPILOT_GOOGLE_CLIENT_SECRET",
+    "google_refresh_token": "PAPERPILOT_GOOGLE_REFRESH_TOKEN",
 }
 
 # Name, unter dem PaperPilot seine Einträge im Schlüsselbund ablegt.

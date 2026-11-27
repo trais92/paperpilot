@@ -27,11 +27,12 @@ flowchart LR
     subgraph Adapter_aus[Ablageziel]
         LS[LocalStore]
         MS[MemoryStore]
+        DS[DriveStore<br/>Google Drive]
     end
     IMAP & JSON -- MailSource --> PL
     PL -- Classifier --> PF
     AI -- LanguageModel --> FB
-    RUN -- StorageTarget --> LS & MS
+    RUN -- StorageTarget --> LS & MS & DS
     ENV[EnvCredentialStore] & KR[KeyringCredentialStore] -- CredentialStore --> IMAP
 ```
 
@@ -40,7 +41,7 @@ flowchart LR
 | `MailSource` | Mails neuer als `since`, Postfach bleibt unverändert | `ImapSource`, `JsonSource` | – |
 | `Classifier` | genau ein Label, bei Unsicherheit `unklar` | `PrefilteredClassifier`, `AIClassifier`, `RuleClassifier` | Felder auslesen (Roadmap 4) |
 | `LanguageModel` | Antworttext unverändert, jede Störung als `ProviderError`, Schlüssel nie in Meldungen | `OpenAICompatibleModel`, `AnthropicModel`, `FallbackModel` ([ADR 0007](adr/0007-ki-schicht-mit-austauschbaren-modellen.md)) | – |
-| `StorageTarget` | nie überschreiben, Duplikat-Index, Übersichten, Lauf-Stand geht nie zurück | `LocalStore`, `MemoryStore` | Google Drive ([ADR 0005](adr/0005-ablage-ordnerstruktur-lokal-oder-drive.md)) |
+| `StorageTarget` | nie überschreiben, Duplikat-Index, Übersichten, Lauf-Stand geht nie zurück | `LocalStore`, `MemoryStore`, `DriveStore` ([ADR 0008](adr/0008-google-drive-adapter.md)) | – |
 | `CredentialStore` | Zugangsdaten lesen, nie in Dateien oder Logs | `EnvCredentialStore`, `KeyringCredentialStore`, `ChainedCredentialStore` | – |
 | `MutableCredentialStore` | zusätzlich speichern und löschen, nur für `login`/`logout` | `KeyringCredentialStore` ([ADR 0004](adr/0004-zugangsdaten-im-schluesselbund.md)) | – |
 
@@ -134,6 +135,15 @@ Alle Adapter kennen nur die fest vereinbarten Schlüssel aus `KEYS` (`imap_host`
 - `update_tracker()` hält eine Zeile pro Firma. `neu_aus_mail` sammelt Einträge (`NEU Datum · Typ · Betreff · Frist`) als Übergabepunkt für andere Werkzeuge oder Agenten, die selbst keinen Mailzugang haben.
 - `update_deadlines()` führt neue Fristen mit der vorhandenen CSV zusammen und erzeugt die `.ics` jedes Mal komplett neu.
 
+### `drive/`
+Google Drive als Ablageziel ([ADR 0008](adr/0008-google-drive-adapter.md)), nur Standardbibliothek.
+
+- **`oauth.py`**: Anmeldung mit PKCE und Rückruf auf `127.0.0.1`, Scope `drive.file`. `GoogleSession` tauscht das Refresh-Token aus dem Schlüsselbund bei Bedarf gegen ein Zugriffstoken.
+- **`api.py`**: `DriveApi` mit sechs Aufrufen (suchen, Ordner anlegen, hochladen, Inhalt ersetzen, herunterladen, exportieren), erneuert das Token einmal bei HTTP 401. Es gibt keinen Lösch-Aufruf.
+- **`store.py`**: `DriveStore` bildet Pfade auf Ordner ab (mit Zwischenspeicher pro Lauf), legt Übersichten als Google-Tabelle an und hält Index und Lauf-Stand in `.paperpilot/`.
+
+`composition.make_store()` wählt anhand von `[storage]` bzw. `--storage` zwischen `LocalStore` und `DriveStore`.
+
 ### `pipeline.py`
 `plan_mail()` entscheidet die Aktion pro Mail:
 
@@ -163,7 +173,7 @@ Die wichtigsten Entscheidungen sind als [ADRs](adr/README.md) mit Alternativen b
 | KI sortiert, Regeln filtern vor ([ADR 0003](adr/0003-ki-fest-eingebaut.md), [0007](adr/0007-ki-schicht-mit-austauschbaren-modellen.md)) | Versteht Formulierungen ohne Stichwort, eigene Kategorien per Beschreibung | Mail-Inhalte gehen an einen Anbieter; Antworten müssen geprüft werden |
 | Planen und Ausführen getrennt | Trockenlauf ohne Sonderlogik, gut testbar | Plan hält Dateiinhalte im Speicher (bei sehr großen Anhängen relevant) |
 | `unklar` statt Raten | Ein falsch abgelegtes Dokument ist teurer als eine Rückfrage | Mehr manuelle Prüfung (11,5 % im Testset) |
-| Dateisystem statt Drive-API (Stand 0.1.0, Drive-Adapter geplant in [ADR 0005](adr/0005-ablage-ordnerstruktur-lokal-oder-drive.md)) | Funktioniert mit jedem Sync-Client, keine OAuth-Einrichtung | Keine Drive-spezifischen Funktionen (Freigaben, Labels) |
+| Lokal oder Google Drive ([ADR 0005](adr/0005-ablage-ordnerstruktur-lokal-oder-drive.md), [0008](adr/0008-google-drive-adapter.md)) | Ablage dort, wo Menschen ihre Dateien ohnehin suchen; Drive ohne Desktop-App | Drive braucht einen registrierten OAuth-Client |
 | Ports als `typing.Protocol` ([ADR 0002](adr/0002-ports-und-adapter.md)) | Adapter austauschbar, Kern ohne Netz testbar, `mypy --strict` prüft die Verträge | Eine Indirektion mehr beim Lesen des Codes |
 | Inhalts-Hash für Duplikate | Erkennt auch erneut zugestellte Mails mit anderer ID | Minimal veränderte Kopien gelten als neu |
 | Naive Zeitstempel (UTC bei IMAP) | Einfacher Vergleich mit dem Lauf-Stand | Uhrzeiten in `.ics` sind „floating“ (lokale Zeit des Kalenders) |

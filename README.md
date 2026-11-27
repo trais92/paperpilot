@@ -123,6 +123,7 @@ flowchart LR
 | [`config.py`](src/paperpilot_ops/config.py) + [`default_rules.toml`](src/paperpilot_ops/default_rules.toml) | Alle Entscheidungen als Konfiguration |
 | [`naming.py`](src/paperpilot_ops/naming.py) | Namenskonvention, Umlaute, Firmenname aus der Absender-Domain |
 | [`deadlines.py`](src/paperpilot_ops/deadlines.py) | Fristen und Termine erkennen, Export als iCalendar |
+| [`drive/`](src/paperpilot_ops/drive/) | Google Drive als Ablageziel: Anmeldung im Browser (nur `drive.file`), REST-Aufrufe, Übersicht als Google-Tabelle |
 | [`store.py`](src/paperpilot_ops/store.py) | Ablage ohne Überschreiben, Duplikat-Index, Lauf-Stand, Tracker, Fristenliste |
 | [`pipeline.py`](src/paperpilot_ops/pipeline.py) | Planen und Ausführen getrennt, Bericht |
 | [`evaluate.py`](src/paperpilot_ops/evaluate.py) | Precision, Recall, F1, Genauigkeit, Übergabequote |
@@ -187,7 +188,7 @@ paperpilot run --source imap --rules rules.toml --target "G:/Meine Ablage/Persö
 - **Gmail:** IMAP aktivieren und ein App-Passwort anlegen.
 - **Zugang einmal speichern:** `pip install ".[keyring]"` und `paperpilot login`. PaperPilot meldet sich zur Probe an und legt Server, Benutzer und App-Passwort im Schlüsselbund des Betriebssystems ab (Windows-Anmeldeinformationsverwaltung, macOS-Schlüsselbund, Secret Service unter Linux), nie in einer Datei. `paperpilot login --status` zeigt, was gespeichert ist, `paperpilot logout` löscht alles wieder.
 - **Ohne Schlüsselbund** (Server, CI): `PAPERPILOT_IMAP_HOST`, `PAPERPILOT_IMAP_USER` und `PAPERPILOT_IMAP_PASSWORD` setzen. Umgebungsvariablen haben Vorrang vor dem Schlüsselbund. Was fehlt, wird abgefragt und nicht gespeichert.
-- **Cloud-Ablage:** Als `--target` eignet sich ein per Google Drive for Desktop (oder OneDrive, Dropbox) synchronisierter Ordner.
+- **Google Drive:** `paperpilot login --google` verbindet Drive direkt, ohne Drive-App; danach `--storage drive` oder `[storage] target = "drive"`. PaperPilot sieht dort nur seine eigenen Dateien. Einrichtung: [docs/google-drive.md](docs/google-drive.md). Alternativ eignet sich ein synchronisierter Ordner (Drive, OneDrive, Dropbox) als `--target`.
 - **Kalender:** `Fristen/fristen.ics` in den Kalender importieren.
 
 ### KI einrichten
@@ -218,10 +219,10 @@ schtasks /create /tn "paperpilot-mail" /sc daily /st 09:00 /tr "paperpilot run -
 | Befehl | Zweck | Wichtige Optionen |
 |---|---|---|
 | `paperpilot demo` | Komplettlauf auf Beispieldaten | `--out DIR`, `--reset`, `--rules` |
-| `paperpilot run` | Postfach einsortieren (Standard: Trockenlauf) | `--source json\|imap`, `--input`, `--target`, `--classifier ai\|rules`, `--since`, `--apply` |
+| `paperpilot run` | Postfach einsortieren (Standard: Trockenlauf) | `--source json\|imap`, `--input`, `--storage local\|drive`, `--target`, `--classifier ai\|rules`, `--since`, `--apply` |
 | `paperpilot eval` | Trefferquote messen | `--testset`, `--classifier`, `--min-accuracy` |
 | `paperpilot init` | Regeldatei anlegen | `--path` |
-| `paperpilot login` | Postfach-Zugang oder KI-Schlüssel im Schlüsselbund speichern | `--ai groq\|claude`, `--status`, `--no-check` |
+| `paperpilot login` | Postfach-Zugang oder KI-Schlüssel im Schlüsselbund speichern | `--ai groq\|claude`, `--google`, `--status`, `--no-check` |
 | `paperpilot logout` | Gespeicherte Zugangsdaten löschen | |
 
 ## Entwicklung
@@ -243,6 +244,7 @@ Die CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) prüft auf Pytho
 | [docs/architecture.md](docs/architecture.md) | Ports und Adapter, Komponenten, Datenfluss, Designentscheidungen |
 | [docs/adr/](docs/adr/README.md) | Architekturentscheidungen mit Alternativen und Folgen |
 | [docs/ai-providers.md](docs/ai-providers.md) | KI-Anbieter, Kosten, Kontingente, Einrichtung, Quellen |
+| [docs/google-drive.md](docs/google-drive.md) | Google Drive verbinden, Rechte, Einrichtung des OAuth-Clients |
 | [docs/security.md](docs/security.md) | Sicherheitskonzept: Schutzgüter, Zusagen und die Tests dazu |
 | [docs/configuration.md](docs/configuration.md) | Alle Felder der Regeldatei, Scoring, Beispiele |
 | [docs/evaluation.md](docs/evaluation.md) | Testset, Metriken, Fehleranalyse, Grenzen |

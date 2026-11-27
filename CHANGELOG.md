@@ -2,6 +2,13 @@
 
 ## Unveröffentlicht
 
+### Google Drive als Ablageziel (Roadmap 7)
+
+- `DriveStore`: dieselbe Ordnerstruktur in „Meine Ablage/PaperPilot“, Übersichten als Google-Tabellen, besteht den Vertragstest der Ablageziele.
+- `paperpilot login --google`: Anmeldung im Browser (OAuth mit PKCE, Rückruf auf 127.0.0.1), nur Scope `drive.file`, Refresh-Token im Schlüsselbund.
+- Konfiguration `[storage]` (`target`, `drive_folder`) und `paperpilot run --storage local|drive`.
+- Nur Standardbibliothek; keine Lösch-Methode. ADR 0008, `docs/google-drive.md`, Sicherheitskonzept erweitert.
+
 ### Wählbare Kategorien und Übersichtstabellen (Roadmap 3)
 
 - `enabled = false` an Kategorie oder Gruppe: Mails werden erkannt, aber nicht abgelegt (neue Aktion `skip`, im Bericht „NICHT GEWÄHLT“).

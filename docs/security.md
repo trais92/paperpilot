@@ -7,7 +7,7 @@ PaperPilot arbeitet mit dem Postfach, mit privaten Dokumenten und mit Zugangsdat
 | Was | Warum schützenswert |
 |---|---|
 | Postfach | Darf nie verändert werden: keine Mail senden, verschieben, löschen oder als gelesen markieren |
-| Zugangsdaten (App-Passwort, KI-Schlüssel, später Google-Token) | Voller Zugriff auf Postfach bzw. Konten |
+| Zugangsdaten (App-Passwort, KI-Schlüssel, Google-Refresh-Token) | Voller Zugriff auf Postfach bzw. Konten |
 | Abgelegte Dokumente | Private Inhalte; ein Überschreiben wäre Datenverlust |
 | Mail-Inhalte unterwegs | Gehen nur an Dienste, die der Mensch ausgewählt hat |
 
@@ -54,6 +54,20 @@ Entscheidungen: [ADR 0003](adr/0003-ki-fest-eingebaut.md), [ADR 0007](adr/0007-k
 | Nur verschlüsselte Verbindungen | `OpenAICompatibleModel` lehnt andere Adressen als `https://` ab | `test_openai_only_https` |
 
 Grenze: Eine Mail kann die KI zu einer falschen, aber erlaubten Kategorie verleiten. Deshalb bleibt der Trockenlauf Standard und jede Ablage nachvollziehbar (Begründung im Bericht).
+
+## Google Drive
+
+Entscheidung: [ADR 0008](adr/0008-google-drive-adapter.md). Einrichtung: [google-drive.md](google-drive.md).
+
+| Zusage | Umsetzung | Geprüft in |
+|---|---|---|
+| Nur Zugriff auf selbst angelegte Dateien | einziger Scope `drive.file` | `test_authorization_url_requests_only_drive_file` |
+| Kein Löschen in Drive | `DriveApi` hat keinen Lösch- oder Papierkorb-Aufruf | `test_api_has_no_delete_or_trash` |
+| Nie überschreiben | `DriveStore` besteht den Vertragstest der Ablageziele | `tests/test_storage_contract.py` |
+| Abgefangener Code ist wertlos, fremde Rückrufe werden abgewiesen | PKCE (S256) und `state` | `test_pkce_challenge_is_s256_of_verifier`, `test_receive_code_rejects_wrong_state_and_denial` |
+| Rückruf nur lokal erreichbar | Server lauscht ausschließlich auf `127.0.0.1` | `test_receive_code_runs_local_callback_server` |
+| Tokens nur im Schlüsselbund bzw. Arbeitsspeicher | Refresh-Token im Schlüsselbund, Zugriffstoken nie gespeichert | `test_login_google_stores_token_in_keyring` |
+| Tokens nie in Meldungen | eigene Fehlertexte, `repr()` ohne Werte | `test_api_errors_contain_no_token`, `test_session_caches_and_refreshes_after_expiry` |
 
 ## Meldung von Schwachstellen
 

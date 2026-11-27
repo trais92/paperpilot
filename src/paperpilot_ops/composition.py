@@ -10,7 +10,9 @@ from .ai import AIClassifier, PrefilteredClassifier, build_language_model
 from .ai.http import Transport, urllib_transport
 from .classify import RuleClassifier
 from .config import Rules
-from .ports import Classifier, CredentialStore
+from .drive import DriveApi, DriveStore, GoogleSession
+from .ports import Classifier, CredentialStore, StorageTarget
+from .store import LocalStore
 
 CLASSIFIERS = ("ai", "rules")
 
@@ -36,3 +38,28 @@ def describe_classifier(classifier: Classifier) -> str:
     if isinstance(classifier, RuleClassifier):
         return "Regeln (ohne KI)"
     return type(classifier).__name__
+
+
+class MissingGoogleLoginError(RuntimeError):
+    """Google Drive ist gewählt, aber es gibt keine gespeicherte Anmeldung."""
+
+
+def make_store(
+    rules: Rules,
+    creds: CredentialStore,
+    target: str | None = None,
+    local_dir: str | None = None,
+    transport: Transport = urllib_transport,
+) -> StorageTarget:
+    """Ablageziel aus `[storage]`, überschreibbar mit `target` (CLI `--storage`) und `local_dir` (`--target`)."""
+    chosen = target or rules.storage.target
+    if chosen == "local":
+        return LocalStore(local_dir or rules.target_dir)
+    if chosen == "drive":
+        client_id, secret = creds.get("google_client_id"), creds.get("google_client_secret")
+        refresh = creds.get("google_refresh_token")
+        if not (client_id and secret and refresh):
+            raise MissingGoogleLoginError("Google Drive ist gewählt, aber nicht verbunden: paperpilot login --google")
+        session = GoogleSession(client_id, secret, refresh, transport)
+        return DriveStore(DriveApi(session, transport), rules.storage.drive_folder)
+    raise ValueError(f"Unbekanntes Ablageziel: {chosen}")

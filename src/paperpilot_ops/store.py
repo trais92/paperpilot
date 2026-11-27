@@ -30,13 +30,13 @@ def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _numbered(rel_path: str, n: int) -> str:
+def numbered_path(rel_path: str, n: int) -> str:
     """'a/b.txt', 2 -> 'a/b-2.txt'"""
     p = PurePosixPath(rel_path)
     return str(p.with_name(f"{p.stem}-{n}{p.suffix}"))
 
 
-def _newest(*dates: datetime | None) -> datetime | None:
+def newest_date(*dates: datetime | None) -> datetime | None:
     return max((d for d in dates if d is not None), default=None)
 
 
@@ -85,7 +85,7 @@ class LocalStore:
     def write_file(self, rel_path: str, content: bytes) -> str:
         candidate, n = rel_path, 2
         while (self.root / candidate).exists():  # nie überschreiben
-            candidate, n = _numbered(rel_path, n), n + 1
+            candidate, n = numbered_path(rel_path, n), n + 1
         target = self.root / candidate
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(content)
@@ -140,7 +140,7 @@ class LocalStore:
     def save(self, last_mail_date: datetime | None) -> None:
         self.meta.mkdir(parents=True, exist_ok=True)
         (self.meta / "index.json").write_text(json.dumps(self.index, indent=1, ensure_ascii=False), "utf-8")
-        newest = _newest(self.last_run(), last_mail_date)
+        newest = newest_date(self.last_run(), last_mail_date)
         state = {
             "last_run": datetime.now().isoformat(timespec="seconds"),
             "last_mail_date": newest.isoformat() if newest else None,
@@ -168,7 +168,7 @@ class MemoryStore:
     def write_file(self, rel_path: str, content: bytes) -> str:
         candidate, n = rel_path, 2
         while candidate in self.files or candidate in self.texts:
-            candidate, n = _numbered(rel_path, n), n + 1
+            candidate, n = numbered_path(rel_path, n), n + 1
         self.files[candidate] = content
         self._index[sha256(content)] = candidate
         return candidate
@@ -190,7 +190,7 @@ class MemoryStore:
         return self._last_mail_date
 
     def save(self, last_mail_date: datetime | None) -> None:
-        self._last_mail_date = _newest(self._last_mail_date, last_mail_date)
+        self._last_mail_date = newest_date(self._last_mail_date, last_mail_date)
 
 
 # -- Übersichten --------------------------------------------------------------------

@@ -14,8 +14,8 @@ from pathlib import Path
 from . import __version__
 from .ai import MissingAIKeyError
 from .ai.providers import credential_key
-from .composition import CLASSIFIERS, describe_classifier, make_classifier
-from .config import AI_PROVIDERS, Rules, default_rules_text, load_rules
+from .composition import CLASSIFIERS, MissingGoogleLoginError, describe_classifier, make_classifier, make_store
+from .config import AI_PROVIDERS, STORAGE_TARGETS, Rules, default_rules_text, load_rules
 from .credentials import KEYS, CredentialStoreError, KeyringCredentialStore, default_credential_store
 from .evaluate import evaluate, render_eval
 from .pipeline import render_report, run
@@ -77,6 +77,8 @@ def cmd_login(args: argparse.Namespace) -> int:
             return 0
         if args.ai:
             return _login_ai(vault, args.ai)
+        if args.google:
+            return _login_google(vault)
         host = input(f"IMAP-Server [{vault.get('imap_host') or DEFAULT_IMAP_HOST}]: ").strip()
         host = host or vault.get("imap_host") or DEFAULT_IMAP_HOST
         user = input("IMAP-Benutzer (Mailadresse): ").strip()
@@ -112,6 +114,42 @@ def _login_ai(vault: MutableCredentialStore, provider: str) -> int:
     return 0
 
 
+def _google_login_flow(client_id: str, client_secret: str) -> str:
+    """Anmeldung im Browser; eigene Funktion, damit Tests ohne Browser und Netz auskommen."""
+    import webbrowser
+
+    from .drive.oauth import login
+
+    print("Der Browser öffnet sich für die Anmeldung bei Google (nur Zugriff auf von PaperPilot angelegte Dateien).")
+    return login(client_id, client_secret, webbrowser.open)
+
+
+def _login_google(vault: MutableCredentialStore) -> int:
+    """Google Drive verbinden: OAuth-Client einmal hinterlegen, im Browser zustimmen, Token speichern."""
+    from .drive.oauth import OAuthError
+
+    stored_id = vault.get("google_client_id")
+    client_id = input(f"OAuth-Client-ID [{'gespeichert' if stored_id else 'fehlt'}]: ").strip() or stored_id
+    client_secret = getpass.getpass("OAuth-Client-Secret (leer lassen = gespeicherten nutzen): ").strip()
+    client_secret = client_secret or vault.get("google_client_secret") or ""
+    if not client_id or not client_secret:
+        print(
+            "Client-ID und Client-Secret sind Pflicht (siehe docs/google-drive.md). Nichts gespeichert.",
+            file=sys.stderr,
+        )
+        return 1
+    try:
+        refresh_token = _google_login_flow(client_id, client_secret)
+    except OAuthError as exc:
+        print(f"{exc} Nichts gespeichert.", file=sys.stderr)
+        return 1
+    vault.set("google_client_id", client_id)
+    vault.set("google_client_secret", client_secret)
+    vault.set("google_refresh_token", refresh_token)
+    print('Google Drive verbunden. In der Konfiguration [storage] target = "drive" setzen oder --storage drive nutzen.')
+    return 0
+
+
 def cmd_logout(args: argparse.Namespace) -> int:
     """Alle Einträge von PaperPilot aus dem Schlüsselbund löschen."""
     try:
@@ -141,7 +179,11 @@ def cmd_run(args: argparse.Namespace) -> int:
     classifier = _classifier_or_exit(args.classifier, rules, creds)
     if classifier is None:
         return 2
-    store = LocalStore(args.target or rules.target_dir)
+    try:
+        store = make_store(rules, creds, args.storage, args.target)
+    except MissingGoogleLoginError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     since = datetime.fromisoformat(args.since) if args.since else store.last_run()
     source: MailSource
     if args.source == "imap":
@@ -193,7 +235,8 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--source", choices=["json", "imap"], default="json")
     r.add_argument("--input", help="JSON/JSONL-Datei bei --source json")
     r.add_argument("--rules")
-    r.add_argument("--target", help="Ablage-Ordner (überschreibt target_dir)")
+    r.add_argument("--storage", choices=STORAGE_TARGETS, help="Ablageziel (überschreibt [storage] target)")
+    r.add_argument("--target", help="lokaler Ablage-Ordner (überschreibt target_dir)")
     r.add_argument("--classifier", choices=CLASSIFIERS, default="ai", help="ai (Standard) oder rules (ohne KI)")
     r.add_argument("--since", help="ISO-Datum, sonst seit letztem Lauf")
     r.add_argument("--apply", action="store_true", help="Plan wirklich ausführen")
@@ -216,6 +259,7 @@ def build_parser() -> argparse.ArgumentParser:
     lg.add_argument("--status", action="store_true", help="nur anzeigen, was gespeichert ist (ohne Werte)")
     lg.add_argument("--no-check", action="store_true", help="ohne Probe-Anmeldung speichern")
     lg.add_argument("--ai", choices=AI_PROVIDERS, help="statt des Postfachs den API-Schlüssel dieses KI-Anbieters")
+    lg.add_argument("--google", action="store_true", help="statt des Postfachs Google Drive verbinden")
     lg.set_defaults(func=cmd_login)
 
     lo = sub.add_parser("logout", help="Gespeicherte Zugangsdaten aus dem Schlüsselbund löschen")

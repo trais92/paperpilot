@@ -64,6 +64,26 @@ def _load_ai(raw: dict[str, Any]) -> AISettings:
     return settings
 
 
+STORAGE_TARGETS = ("local", "drive")
+
+
+@dataclass(frozen=True)
+class StorageSettings:
+    """Abschnitt `[storage]`: wohin abgelegt wird."""
+
+    target: str = "local"  # "local" (Ordner `target_dir`) oder "drive" (Google Drive)
+    drive_folder: str = "PaperPilot"  # Wurzelordner in „Meine Ablage“
+
+
+def _load_storage(raw: dict[str, Any]) -> StorageSettings:
+    settings = StorageSettings(target=raw.get("target", "local"), drive_folder=raw.get("drive_folder", "PaperPilot"))
+    if settings.target not in STORAGE_TARGETS:
+        raise ValueError(f"Unbekanntes Ablageziel {settings.target!r}, erlaubt: {', '.join(STORAGE_TARGETS)}")
+    if not settings.drive_folder.strip() or "/" in settings.drive_folder:
+        raise ValueError("storage.drive_folder muss ein einzelner Ordnername sein")
+    return settings
+
+
 @dataclass(frozen=True)
 class Rules:
     target_dir: str
@@ -75,6 +95,7 @@ class Rules:
     categories: tuple[Category, ...]
     groups: dict[str, Group] = field(default_factory=dict)
     ai: AISettings = field(default_factory=AISettings)
+    storage: StorageSettings = field(default_factory=StorageSettings)
 
     @property
     def labels(self) -> list[str]:
@@ -165,4 +186,5 @@ def load_rules(path: str | Path | None = None) -> Rules:
         categories=cats,
         groups=groups,
         ai=_load_ai(raw.get("ai", {})),
+        storage=_load_storage(raw.get("storage", {})),
     )

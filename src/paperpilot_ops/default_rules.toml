@@ -9,6 +9,13 @@
 # - Jeder Zielordner bekommt eine Übersichtstabelle ("Übersicht") im festen Teil des Pfads,
 #   z. B. "06 Rechnungen & Belege/Übersicht.csv".
 
+[storage]
+# Wohin abgelegt wird: "local" (Ordner aus target_dir bzw. --target) oder "drive" (Google Drive,
+# vorher einmal "paperpilot login --google").
+target = "local"
+# Wurzelordner in Google Drive ("Meine Ablage/PaperPilot").
+drive_folder = "PaperPilot"
+
 [ai]
 # Anbieter, der zuerst gefragt wird: "groq" (kostenlos, voreingestellt)
 # oder "claude" (eigener, kostenpflichtiger Schlüssel).

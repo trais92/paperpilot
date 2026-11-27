@@ -1,22 +1,28 @@
 """Vertragstest für den Port `StorageTarget`.
 
-Jeder Adapter (heute `LocalStore` und `MemoryStore`, später Google Drive) muss diese Tests bestehen.
+Jeder Adapter (`LocalStore`, `MemoryStore`, `DriveStore`) muss diese Tests bestehen.
+`DriveStore` läuft dabei gegen eine Nachbildung der Drive-Schnittstelle (tests/fake_drive.py).
 Ein neuer Adapter wird in `store_factory` eingetragen, sonst nichts.
 """
 
 from datetime import datetime
 
 import pytest
+from fake_drive import FakeDrive, FakeTokens
 
+from paperpilot_ops.drive import DriveApi, DriveStore
 from paperpilot_ops.ports import StorageTarget
 from paperpilot_ops.store import LocalStore, MemoryStore, sha256
 
 
-@pytest.fixture(params=["local", "memory"])
+@pytest.fixture(params=["local", "memory", "drive"])
 def store_factory(request, tmp_path):
     """Liefert eine Funktion, die das Ablageziel neu öffnet (wie ein späterer Lauf)."""
     if request.param == "local":
         return lambda: LocalStore(tmp_path)
+    if request.param == "drive":
+        drive = FakeDrive()
+        return lambda: DriveStore(DriveApi(FakeTokens(), drive))
     memory = MemoryStore()
     return lambda: memory
 
